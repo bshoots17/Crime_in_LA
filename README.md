@@ -18,4 +18,4 @@
 
 8.  Following these steps, everything should be up to date!
 
-9.  ![alt text]([https://github.com/bshoots17/[reponame]/blob/[branch]/image.jpg?raw=true])
+9.  ![alt text]([https://github.com/bshoots17/STAT405/blob/main/images/Screenshot%202025-02-18%20at%205.01.05%E2%80%AFPM.png])
