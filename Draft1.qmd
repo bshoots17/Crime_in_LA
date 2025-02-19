@@ -1,34 +1,45 @@
 ---
-title: "Draft 1"
-author: "Kevin, Marco, Bianca"
-date: ''
+title: "Homicide Increases in the COVID-19 Era"
+
+author: "Marco Stine, Kevin Hu, and Bianca Schutz"
+
 format:
-  pdf: default
-  html: default
-editor: visual
+
+ pdf: default
+
 fontsize: 10pt
+
 geometry: margin=1in
-toc: true                   # add table of contents at the beginning
-toc-depth: 2                # Only titles that start with # or ##
+bibliography: references.bib
 ---
 
-## Quarto
+# Introduction - Idea #1
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+During the COVID-19 pandemic in 2021, homicide rates in Los Angeles increased substantially. A report by the Legal Defense Fund's Thurgood Marshall Institute found that this increase was associated with both pre-pandemic and pandemic-induced economic instability and inequalities.[@moore2022]
 
-## Running Code
+Using National Incident-Based Reporting System (NIBRS) data, this report will examine the impact of the pandemic and various socioeconomic factors on homicide rates in LA. We aim to compare the effect of these local characteristics on the incidence of homicide in pre-, mid-, and post-pandemic conditions.
 
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the Los Angeles Police Department (LAPD), who regularly updates Crime Data on the Data.gov website. The data includes all crime data, which we will subset to focus on homicide, and details such as date, location, and offense type.
 
-```{r}
-1 + 1
-```
-
-You can add options to executable code like this 
+# Loading in packages and dataset
 
 ```{r}
-#| echo: false
-2 * 2
+# Primary datasets: Crime Data 2020-Present and 2010-2019
+crime_la_2010_2019 <- read.csv("Raw_Data/Crime_Data_from_2010_to_2019.csv")
+
+crime_la_2020_present <- read.csv("Raw_Data/Crime_Data_from_2020_to_Present.csv")
+
+# Secondary datasets
+for (i in 2018:2023) {
+  obj_name <- paste0("california_median_income_", i)
+  assign(obj_name, read.csv(paste0("Raw_Data/ACSST5Y",i,".S1903-Data.csv")))
+}
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+# Introduction - Idea #2
+
+During the COVID-19 pandemic in 2021, homicide rates in Los Angeles and Houston increased substantially, while rates slightly increased in New York and Chicago and decreased in Dallas and Seattle. A report by the Legal Defense Fund's Thurgood Marshall Institute found that this increase was associated with both pre-pandemic and pandemic-induced economic instability and inequalities.[@moore2022]
+
+Using National Incident-Based Reporting System (NIBRS) data, this report will examine the impact of the pandemic and various socioeconomic factors on homicide rates in these six cities. We aim to compare the effect of these local characteristics on the incidence of homicide in pre-, mid-, and post-pandemic conditions.
+
+We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the FBI Crime Data Explorer Tool, who publishes NIBRS data by state and year. The data includes all crime data, which we will subset to focus on homicide and the incidents occurring in the relevant agencies (city police departments such as LAPD).
