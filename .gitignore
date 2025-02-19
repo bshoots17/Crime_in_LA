@@ -47,3 +47,6 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# CSVs (need to be uploaded via LFS)
+*.csv
