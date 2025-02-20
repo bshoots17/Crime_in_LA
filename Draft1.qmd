@@ -191,7 +191,7 @@ From the pie chart, we can see that around 50% of the crime is commited by male,
 ```{r}
 library(sf)
 library(tidygeocoder)
-zcta <- read_sf(dsn = "cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
+zcta <- read_sf(dsn = "Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
 LA_zctas <- read.csv("Raw_Data/zctas.csv") #obtained using zipcodeR::search_city("Los Angeles", "CA") and then checking which zip codes are also ZCTAs
 
 colnames(LA_zctas) <- c("X", "ZCTA5CE20")
