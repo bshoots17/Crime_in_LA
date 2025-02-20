@@ -43,3 +43,92 @@ During the COVID-19 pandemic in 2021, homicide rates in Los Angeles and Houston 
 Using National Incident-Based Reporting System (NIBRS) data, this report will examine the impact of the pandemic and various socioeconomic factors on homicide rates in these six cities. We aim to compare the effect of these local characteristics on the incidence of homicide in pre-, mid-, and post-pandemic conditions.
 
 We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the FBI Crime Data Explorer Tool, who publishes NIBRS data by state and year. The data includes all crime data, which we will subset to focus on homicide and the incidents occurring in the relevant agencies (city police departments such as LAPD).
+
+
+# Plot 1 - Examining Crime Density from 2010–2019 and 2020-Present
+
+```{r}
+
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
+
+smoothScatter(
+  x    = crime_la_2010_2019$LON,
+  y    = crime_la_2010_2019$LAT,
+  xlim = c(-119, -118),
+  ylim = c(33.5, 34.5),
+  nbin = 300,
+  xlab = "Longitude",
+  ylab = "Latitude",
+  main = "Crime Density (2010–2019)",
+  colramp = colorRampPalette(c("white", "skyblue", "blue", "darkblue"))
+)
+
+smoothScatter(
+  x    = crime_la_2020_present$LON,
+  y    = crime_la_2020_present$LAT,
+  xlim = c(-119, -118),
+  ylim = c(33.5, 34.5),
+  nbin = 300,
+  xlab = "Longitude",
+  ylab = "Latitude",
+  main = "Crime Density (2020–Present)",
+  colramp = colorRampPalette(c("white", "pink", "red", "darkred"))
+)
+
+par(mfrow = c(1, 1))
+
+```
+Both time periods show major clusters of reported crimes in central LA. The 2020–present data appears slightly more dispersed to the north, but overall patterns remain similar looking.
+
+# Plot 2 - Examining Number Of Crimes Over Time
+
+```{r}
+
+crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
+
+crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
+                                  format = "%m/%d/%Y %I:%M:%S %p", 
+                                  tz = "America/Los_Angeles")
+
+crime_la$YearWeek <- format(crime_la$DateParsed, "%Y-%U")
+
+weekly_counts <- aggregate(DR_NO ~ YearWeek, data = crime_la, FUN = length)
+names(weekly_counts)[2] <- "Crimes"
+
+weekly_counts <- weekly_counts[order(weekly_counts$YearWeek), ]
+
+weekly_counts$Index <- seq_len(nrow(weekly_counts))
+
+plot(
+  weekly_counts$Index,
+  weekly_counts$Crimes,
+  type = "l",
+  col  = "blue",
+  lwd  = 2,
+  xlab = "Weekly Index",
+  ylab = "Number of Crimes",
+  main = "Weekly Crime Counts in Los Angeles (2010–Present)"
+)
+
+abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index), 
+       col = "gray", lty = "dotted")
+
+
+```
+The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
+
+# Using Regression to Predict ____
+
+```{r}
+
+weekly_counts$CrimesLag <- c(NA, weekly_counts$Crimes[-nrow(weekly_counts)])
+
+ar1_trend_regression <- lm(Crimes ~ Index + CrimesLag, data = weekly_counts, na.action = na.omit)
+
+summary(ar1_trend_regression)
+
+```
+
+# Interpretation
+
+The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
