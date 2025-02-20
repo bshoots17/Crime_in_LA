@@ -13,7 +13,7 @@ geometry: margin=1in
 bibliography: references.bib
 ---
 
-# Introduction - Idea #1
+# Introduction
 
 During the COVID-19 pandemic in 2021, homicide rates in Los Angeles increased substantially. A report by the Legal Defense Fund's Thurgood Marshall Institute found that this increase was associated with both pre-pandemic and pandemic-induced economic instability and inequalities.[@moore2022]
 
@@ -35,15 +35,6 @@ for (i in 2018:2023) {
   assign(obj_name, read.csv(paste0("Raw_Data/ACSST5Y",i,".S1903-Data.csv")))
 }
 ```
-
-# Introduction - Idea #2
-
-During the COVID-19 pandemic in 2021, homicide rates in Los Angeles and Houston increased substantially, while rates slightly increased in New York and Chicago and decreased in Dallas and Seattle. A report by the Legal Defense Fund's Thurgood Marshall Institute found that this increase was associated with both pre-pandemic and pandemic-induced economic instability and inequalities.[@moore2022]
-
-Using National Incident-Based Reporting System (NIBRS) data, this report will examine the impact of the pandemic and various socioeconomic factors on homicide rates in these six cities. We aim to compare the effect of these local characteristics on the incidence of homicide in pre-, mid-, and post-pandemic conditions.
-
-We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the FBI Crime Data Explorer Tool, who publishes NIBRS data by state and year. The data includes all crime data, which we will subset to focus on homicide and the incidents occurring in the relevant agencies (city police departments such as LAPD).
-
 
 # Plot 1 - Examining Crime Density from 2010–2019 and 2020-Present
 
@@ -188,6 +179,9 @@ pie(
 ```
 
 From the pie chart, we can see that around 50% of the crime is commited by male, 45% by female and 5% by non-binary. 
+
+# Plot 5 - Median Household Income by Zip Code in Los Angeles by Year
+
 
 
 # Interpretation
