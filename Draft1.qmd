@@ -29,11 +29,23 @@ crime_la_2010_2019 <- read.csv("Raw_Data/Crime_Data_from_2010_to_2019.csv")
 
 crime_la_2020_present <- read.csv("Raw_Data/Crime_Data_from_2020_to_Present.csv")
 
+# Combine the two datasets
+crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
+
 # Secondary datasets
-for (i in 2018:2023) {
-  obj_name <- paste0("california_median_income_", i)
-  assign(obj_name, read.csv(paste0("Raw_Data/ACSST5Y",i,".S1903-Data.csv")))
+california_median_income_2018_2023 <- list()
+yrs <- 2018:2023
+for (i in 1:length(yrs)) {
+  obj <- read.csv(paste0("Raw_Data/ACSST5Y",yrs[[i]],".S1903-Data.csv"), skip = 0)
+  obj <- obj[-1,]
+  obj$year <- yrs[[i]]
+  california_median_income_2018_2023[[i]] <- obj
 }
+
+cali_median_income <- do.call(rbind, california_median_income_2018_2023)
+
+# adding a variable that's just the ZCTA zip code
+cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
 ```
 
 # Plot 1 - Examining Crime Density from 2010–2019 and 2020-Present
@@ -75,9 +87,6 @@ Both time periods show major clusters of reported crimes in central LA. The 2020
 # Plot 2 - Examining Number Of Crimes Over Time
 
 ```{r}
-
-crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
-
 crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
                                   format = "%m/%d/%Y %I:%M:%S %p", 
                                   tz = "America/Los_Angeles")
@@ -182,7 +191,31 @@ From the pie chart, we can see that around 50% of the crime is commited by male,
 
 # Plot 5 - Median Household Income by Zip Code in Los Angeles by Year
 
+```{r}
+library(sf)
+library(tidygeocoder)
+zcta <- read_sf(dsn = "cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
+LA_zctas <- read.csv("Raw_Data/zctas.csv") #obtained using zipcodeR::search_city("Los Angeles", "CA") and then checking which zip codes are also ZCTAs
 
+colnames(LA_zctas) <- c("X", "ZCTA5CE20")
+LA_zctas$ZCTA5CE20 <- as.character(LA_zctas$ZCTA5CE20)
+
+zcta_filtered <- zcta %>% inner_join(LA_zctas, by = "ZCTA5CE20")
+
+median_household_income <- cali_median_income %>% select(ZCTA, S1903_C03_001E, year)
+
+median_household_income$S1903_C03_001E <- as.integer(median_household_income$S1903_C03_001E)
+
+zcta_with_data <- zcta_filtered %>% inner_join(median_household_income, join_by("ZCTA5CE20" == "ZCTA"))
+
+plot(st_geometry(zcta_with_data), 
+     col = brewer.pal(9, "Blues")[as.numeric(cut(zcta_with_data$S1903_C03_001E, 
+                                                 breaks = 9))], 
+     border = 'grey', 
+     axes = TRUE, 
+     main = "ZCTA Data Colored by Numerical Column", 
+     cex.main = 1.5)
+```
 
 # Interpretation
 
