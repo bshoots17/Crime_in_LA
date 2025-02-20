@@ -191,6 +191,9 @@ From the pie chart, we can see that around 50% of the crime is commited by male,
 ```{r}
 library(sf)
 library(tidygeocoder)
+library(tidyverse)
+library(RColorBrewer)
+
 zcta <- read_sf(dsn = "Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
 LA_zctas <- read.csv("Raw_Data/zctas.csv") #obtained using zipcodeR::search_city("Los Angeles", "CA") and then checking which zip codes are also ZCTAs
 
@@ -205,14 +208,18 @@ median_household_income$S1903_C03_001E <- as.integer(median_household_income$S19
 
 zcta_with_data <- zcta_filtered %>% inner_join(median_household_income, join_by("ZCTA5CE20" == "ZCTA"))
 
+zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E))
+
 plot(st_geometry(zcta_with_data), 
      col = brewer.pal(9, "Blues")[as.numeric(cut(zcta_with_data$S1903_C03_001E, 
                                                  breaks = 9))], 
      border = 'grey', 
      axes = TRUE, 
-     main = "Median Household Income by ", 
+     main = "Median Household Income by Year and Zip Code", 
      cex.main = 1.5)
 ```
+
+# Plot 6 - Frequency of Top 10 Crimes
 
 # Interpretation
 
