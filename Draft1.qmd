@@ -1,7 +1,7 @@
 ---
 title: "Homicide Increases in the COVID-19 Era"
 
-author: "Marco Stine, Kevin Hu, and Bianca Schutz"
+author: "Marco Stine, Kevin Hu, Bianca Schutz, and Kaitlyn Kirt"
 
 format:
 
