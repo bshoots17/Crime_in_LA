@@ -113,6 +113,7 @@ plot(
 
 abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index), 
        col = "gray", lty = "dotted")
+```
 
 The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
 
@@ -213,7 +214,7 @@ plot(st_geometry(zcta_with_data),
                                                  breaks = 9))], 
      border = 'grey', 
      axes = TRUE, 
-     main = "ZCTA Data Colored by Numerical Column", 
+     main = "Median Household Income by ", 
      cex.main = 1.5)
 ```
 
