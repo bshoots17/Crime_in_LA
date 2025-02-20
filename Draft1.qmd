@@ -80,6 +80,7 @@ par(mfrow = c(1, 1))
 ```
 Both time periods show major clusters of reported crimes in central LA. The 2020–present data appears slightly more dispersed to the north, but overall patterns remain similar looking.
 
+
 # Plot 2 - Examining Number Of Crimes Over Time
 
 ```{r}
@@ -113,8 +114,6 @@ plot(
 abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index), 
        col = "gray", lty = "dotted")
 
-
-```
 The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
 
 # Using Regression to Predict ____
@@ -128,6 +127,68 @@ ar1_trend_regression <- lm(Crimes ~ Index + CrimesLag, data = weekly_counts, na.
 summary(ar1_trend_regression)
 
 ```
+
+
+# Plot 3 Crime rate frequency by day of the week 
+
+```{r}
+# Convert Date.Rptd to Date format (ignore time part)
+crime_la$Date.Rptd
+crime_la$Date <- as.Date(substr(crime_la$Date.Rptd, 1, 10), format = "%m/%d/%Y")
+
+# Set locale to English (for weekday names)
+Sys.setlocale("LC_TIME", "C")
+
+# Extract the day of the week
+crime_la$DayOfWeek <- weekdays(crime_la$Date)
+crime_la$DayOfWeek
+
+# Count occurrences of crimes per day
+crime_counts <- table(crime_la$DayOfWeek)
+crime_counts
+
+# Order the days correctly
+day_order <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+crime_counts <- crime_counts[day_order]
+
+# Plot bar chart with horizontal labels
+barplot(crime_counts, col = "lightblue",
+        main = "Crime Occurrences by Day of the Week",
+        xlab = "Day of the Week", ylab = "Number of Crimes",
+        names.arg = names(crime_counts), las = 1, cex.names = 0.8, cex.axis = 0.6)
+```
+The number of crimes are rather evenly distributed, with the weekends having slightly lower crime compared to week days. 
+
+
+# Plot 4 Gender Distribution for crimes over time
+
+```{r}
+
+# Combine the datasets
+crime_la <- rbind(crime_rate_ds, crime_old_ds)
+
+# Remove missing values and empty strings in Vict.Sex column
+crime_la <- subset(crime_la, Vict.Sex != "" & !is.na(Vict.Sex))
+
+# Replace all non-"F" and non-"M" values with "N"
+crime_la$Vict.Sex <- ifelse(crime_la$Vict.Sex %in% c("F", "M"), 
+                                  crime_la$Vict.Sex, "N")
+# Count occurrences of each gender
+gender_counts <- table(crime_la$Vict.Sex)
+
+# Create a pie chart using base R
+color <- c("F" = "pink", "M" = "lightblue", "N" = "purple")
+pie(
+  gender_counts, 
+  labels = paste(names(gender_counts), 
+                 round(gender_counts / sum(gender_counts) * 100, 1), "%"), 
+  col = color[names(gender_counts)],
+  main = "Distribution of Crime Victims by Gender"
+)
+```
+
+From the pie chart, we can see that around 50% of the crime is commited by male, 45% by female and 5% by non-binary. 
+
 
 # Interpretation
 
