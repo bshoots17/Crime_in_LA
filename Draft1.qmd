@@ -164,10 +164,6 @@ The number of crimes are rather evenly distributed, with the weekends having sli
 # Plot 4 Gender Distribution for crimes over time
 
 ```{r}
-
-# Combine the datasets
-crime_la <- rbind(crime_rate_ds, crime_old_ds)
-
 # Remove missing values and empty strings in Vict.Sex column
 crime_la <- subset(crime_la, Vict.Sex != "" & !is.na(Vict.Sex))
 
