@@ -1,3 +1,6 @@
+# Ignore raw data
+Raw_Data/
+
 # History files
 .Rhistory
 .Rapp.history
