@@ -204,23 +204,45 @@ LA_zctas <- read.csv("Raw_Data/zctas.csv") #obtained using zipcodeR::search_city
 colnames(LA_zctas) <- c("X", "ZCTA5CE20")
 LA_zctas$ZCTA5CE20 <- as.character(LA_zctas$ZCTA5CE20)
 
+# joining the zcta shape file with LA zcta reference file
 zcta_filtered <- zcta %>% inner_join(LA_zctas, by = "ZCTA5CE20")
 
+# getting LA median income using joined file
 median_household_income <- cali_median_income %>% select(ZCTA, S1903_C03_001E, year)
 
 median_household_income$S1903_C03_001E <- as.integer(median_household_income$S1903_C03_001E)
 
 zcta_with_data <- zcta_filtered %>% inner_join(median_household_income, join_by("ZCTA5CE20" == "ZCTA"))
 
-zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E))
+# remove NAs
+zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E), S1903_C03_001E != "-")
 
-plot(st_geometry(zcta_with_data), 
-     col = brewer.pal(9, "Blues")[as.numeric(cut(zcta_with_data$S1903_C03_001E, 
-                                                 breaks = 9))], 
-     border = 'grey', 
-     axes = TRUE, 
-     main = "Median Household Income by Year and Zip Code", 
-     cex.main = 1.5)
+palette <- brewer.pal(7, "Greens")
+
+par(mfrow = c(2, 3), mar = c(2, 2, 2, 6), oma = c(0, 0, 4, 0))
+
+yrs <- 2018:2023
+
+for (yr in yrs) {
+  # Filter by year
+  subset_data <- zcta_no_NAs[zcta_no_NAs$year == yr, ]
+  
+  # Divide it into bins
+  bins <- cut(subset_data$S1903_C03_001E, breaks = 7, labels = FALSE)
+  
+  # Plot
+  plot(st_geometry(subset_data),
+       col = palette[bins],
+       border = 'grey',
+       axes = FALSE,
+       main = yr,
+       cex.main = 1.5)
+  
+  # Add legend
+  legend("right", inset = c(-0.5, 0), legend = round(quantile(subset_data$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0),
+         fill = palette, title = "Median Income ($)", bty = "n", cex = 0.8, xpd = TRUE)
+}
+mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 1, font = 2)
 ```
 
 # Plot 6 - Frequency of Top 10 Crimes
