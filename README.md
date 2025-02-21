@@ -1,4 +1,10 @@
 # STAT405
+## How to Use GitHub in Terminal
+1.  Pull changes using "git pull"
+2.  Make your changes in the file
+3.  Do "git add "filename.extension"" (replace the file name with your file)
+4.  Do "git commit -m "Your message"" (replace your message with a description of what's happening)
+5.  Do "git push"
 
 ## How to Use GitHub in R
 
