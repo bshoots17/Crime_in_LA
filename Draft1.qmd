@@ -21,6 +21,8 @@ Using National Incident-Based Reporting System (NIBRS) data, this report will ex
 
 We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the Los Angeles Police Department (LAPD), who regularly updates Crime Data on the Data.gov website. The data includes all crime data, which we will subset to focus on homicide, and details such as date, location, and offense type.
 
+The codebook for this dataset can be found here: https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8/about_data. 
+
 # Loading in packages and dataset
 
 ```{r}
@@ -128,7 +130,9 @@ ar1_trend_regression <- lm(Crimes ~ Index + CrimesLag, data = weekly_counts, na.
 summary(ar1_trend_regression)
 
 ```
+# Interpretation
 
+The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
 
 # Plot 3 Crime rate frequency by day of the week 
 
@@ -221,6 +225,7 @@ plot(st_geometry(zcta_with_data),
 
 # Plot 6 - Frequency of Top 10 Crimes
 
-# Interpretation
-
-The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
+```{r}
+crime_frequency <- data.frame(table(crime_la$Crm.Cd.Desc))
+top_10_crimes <- crime_frequency[order(-crime_frequency$Freq), ][1:10, ]
+```
