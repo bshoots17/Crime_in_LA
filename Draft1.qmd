@@ -50,6 +50,7 @@ cali_median_income <- do.call(rbind, california_median_income_2018_2023)
 cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
 ```
 
+
 # Plot 1 - Examining Crime Density from 2010–2019 and 2020-Present
 
 ```{r}
@@ -134,6 +135,7 @@ summary(ar1_trend_regression)
 
 The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
 
+
 # Plot 3 Crime rate frequency by day of the week 
 
 ```{r}
@@ -162,6 +164,8 @@ barplot(crime_counts, col = "lightblue",
         xlab = "Day of the Week", ylab = "Number of Crimes",
         names.arg = names(crime_counts), las = 1, cex.names = 0.8, cex.axis = 0.6)
 ```
+# Interpretation
+
 The number of crimes are rather evenly distributed, with the weekends having slightly lower crime compared to week days. 
 
 
@@ -174,6 +178,7 @@ crime_la <- subset(crime_la, Vict.Sex != "" & !is.na(Vict.Sex))
 # Replace all non-"F" and non-"M" values with "N"
 crime_la$Vict.Sex <- ifelse(crime_la$Vict.Sex %in% c("F", "M"), 
                                   crime_la$Vict.Sex, "N")
+
 # Count occurrences of each gender
 gender_counts <- table(crime_la$Vict.Sex)
 
@@ -187,6 +192,7 @@ pie(
   main = "Distribution of Crime Victims by Gender"
 )
 ```
+# Interpretation
 
 From the pie chart, we can see that around 50% of the crime is commited by male, 45% by female and 5% by non-binary. 
 
