@@ -2,16 +2,13 @@
 title: "Homicide Increases in the COVID-19 Era"
 
 author: "Marco Stine, Kevin Hu, Bianca Schutz, and Kaitlyn Kirt"
-
-format:
-
- pdf: default
-
 fontsize: 10pt
 toc: true                   # add table of contents at the beginning
 toc-depth: 3               # Only titles that start with # or ##
 geometry: margin=1in
 bibliography: references.bib
+format:
+  pdf: default
 ---
 
 # Introduction
@@ -26,7 +23,7 @@ The codebook for this dataset can be found here: https://data.lacity.org/Public-
 
 # Loading in packages and dataset
 
-```{r, echo=FALSE}
+```{r, output=FALSE}
 library(sf)
 library(tidygeocoder)
 library(tidyverse) # using only for joining datasets to build map visual
@@ -73,7 +70,8 @@ smoothScatter(
   xlab = "Longitude",
   ylab = "Latitude",
   main = "Crime Density (2010–2019)",
-  colramp = colorRampPalette(c("white", "skyblue", "blue", "darkblue"))
+  colramp = colorRampPalette(c("white", "skyblue", "blue", "darkblue")),
+  cex.main=0.8
 )
 
 smoothScatter(
@@ -85,7 +83,8 @@ smoothScatter(
   xlab = "Longitude",
   ylab = "Latitude",
   main = "Crime Density (2020–Present)",
-  colramp = colorRampPalette(c("white", "pink", "red", "darkred"))
+  colramp = colorRampPalette(c("white", "pink", "red", "darkred")),
+  cex.main=0.8
 )
 
 par(mfrow = c(1, 1))
@@ -131,7 +130,7 @@ The time series shows stable weekly crime counts with occasional large spikes. T
 
 ```{r}
 # Convert Date.Rptd to Date format (ignore time part)
-crime_la$Date.Rptd
+#crime_la$Date.Rptd
 crime_la$Date <- as.Date(substr(crime_la$Date.Rptd, 1, 10), format = "%m/%d/%Y")
 
 # Set locale to English (for weekday names)
@@ -139,11 +138,11 @@ Sys.setlocale("LC_TIME", "C")
 
 # Extract the day of the week
 crime_la$DayOfWeek <- weekdays(crime_la$Date)
-crime_la$DayOfWeek
+# crime_la$DayOfWeek
 
 # Count occurrences of crimes per day
 crime_counts <- table(crime_la$DayOfWeek)
-crime_counts
+# crime_counts
 
 # Order the days correctly
 day_order <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
@@ -209,34 +208,48 @@ zcta_with_data <- zcta_filtered %>% inner_join(median_household_income, join_by(
 zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E), S1903_C03_001E != "-")
 
 zcta_no_NAs$S1903_C03_001E <- as.integer(zcta_no_NAs$S1903_C03_001E)
+```
 
+Now, using this joined dataset, create six maps, one for each year. 
+
+```{r}
+# Calculate quantiles for the entire dataset (from 2018 to 2023)
+quantiles <- round(quantile(zcta_no_NAs$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0)
+
+# Setting a layout for a 2x3 grid
+par(mfrow = c(2, 3), mar = c(1, 1, 1, 5), oma = c(0, 0, 3, 0), cex.main = 1.5)
+
+# Define color palette
 palette <- brewer.pal(7, "Greens")
 
-# setting a layout for a 2x3 grid, margins adjusted to fit the plots, oma() for outer margin area.
-par(mfrow = c(2, 3), mar = c(1, 1, 1, 6), oma = c(0, 0, 3, 0), cex.main = 1.5)
-
+# Plot for each year
 yrs <- 2018:2023
-
 for (yr in yrs) {
   # Filter by year
   subset_data <- zcta_no_NAs[zcta_no_NAs$year == yr, ]
   
-  # Divide it into bins
-  bins <- cut(subset_data$S1903_C03_001E, breaks = 7, labels = FALSE)
+  # Divide into consistent bins based on the global quantiles
+  bins <- cut(subset_data$S1903_C03_001E, breaks = quantiles, labels = FALSE, include.lowest = TRUE)
   
   # Plot
   plot(st_geometry(subset_data),
        col = palette[bins],
        border = 'grey',
-       axes = FALSE)
+       axes = FALSE,
+       lwd = 0.5)
   title(yr, line = -1)
   
-  # Add legend
-  legend("right", inset = c(-0.5, 0), legend = round(quantile(subset_data$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0),
-         fill = palette, title = "Median Income ($)", bty = "n", cex = 0.8, xpd = TRUE)
+  # Add legend (use the global quantiles)
+  legend("right", inset = c(-.75, 0), legend = quantiles, fill = palette, title = "Median Income ($)", bty = "n", cex = 0.8, xpd = TRUE)
 }
-mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 1.5, font = 2)
+
+# Outer title for the whole set of plots
+mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 1, font = 2)
+
 ```
+
+### Interpretation
+The maps demonstrate that median income in certain LA zip codes (particularly those to the west) have a much higher median household income than the rest of the city, but over the last six years, the median income in most other LA zip codes has increased. However, there are some that a typical family is at or below the poverty line. We intend to investigate if there is a spatial correlation between these poorer zip codes and the incidence of crimes, particularly homicide, and whether this is affected by pandemic conditions. 
 
 ## Frequency of Top 10 Crimes
 
@@ -244,6 +257,9 @@ mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 
 crime_frequency <- data.frame(table(crime_la$Crm.Cd.Desc))
 top_10_crimes <- crime_frequency[order(-crime_frequency$Freq), ][1:10, ]
 ```
+
+
+## Homicide 
 
 ## Using Regression to Examine Weekly Crime Rates
 
