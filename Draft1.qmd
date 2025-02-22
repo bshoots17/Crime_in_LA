@@ -24,10 +24,10 @@ The codebook for this dataset can be found here: https://data.lacity.org/Public-
 # Loading in packages and dataset
 
 ```{r, output=FALSE}
-library(sf)
-library(tidygeocoder)
+library(sf) # for map
 library(tidyverse) # using only for joining datasets to build map visual
-library(RColorBrewer)
+library(RColorBrewer) # for map color scheme
+library(tidygeocoder) # to get zip codes of addresses
 
 # Primary datasets: Crime Data 2020-Present and 2010-2019
 crime_la_2010_2019 <- read.csv("Raw_Data/Crime_Data_from_2010_to_2019.csv")
@@ -213,23 +213,23 @@ zcta_no_NAs$S1903_C03_001E <- as.integer(zcta_no_NAs$S1903_C03_001E)
 Now, using this joined dataset, create six maps, one for each year. 
 
 ```{r}
-# Calculate quantiles for the entire dataset (from 2018 to 2023)
-quantiles <- round(quantile(zcta_no_NAs$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0)
+# quantiles for the entire dataset (from 2018 to 2023) to divide the median income into groups
+qntls <- round(quantile(zcta_no_NAs$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0)
 
-# Setting a layout for a 2x3 grid
+# 2x3 plot layout for years 2018-2023, setting margins and outer margins, main title sizes
 par(mfrow = c(2, 3), mar = c(1, 1, 1, 5), oma = c(0, 0, 3, 0), cex.main = 1.5)
 
-# Define color palette
+# color palette for sequential data
 palette <- brewer.pal(7, "Greens")
 
-# Plot for each year
 yrs <- 2018:2023
+
 for (yr in yrs) {
-  # Filter by year
+  # get just that year's data
   subset_data <- zcta_no_NAs[zcta_no_NAs$year == yr, ]
   
-  # Divide into consistent bins based on the global quantiles
-  bins <- cut(subset_data$S1903_C03_001E, breaks = quantiles, labels = FALSE, include.lowest = TRUE)
+  # creating bins based on the qtls
+  bins <- cut(subset_data$S1903_C03_001E, breaks = qntls, labels = FALSE, include.lowest = TRUE)
   
   # Plot
   plot(st_geometry(subset_data),
@@ -239,11 +239,11 @@ for (yr in yrs) {
        lwd = 0.5)
   title(yr, line = -1)
   
-  # Add legend (use the global quantiles)
-  legend("right", inset = c(-.75, 0), legend = quantiles, fill = palette, title = "Median Income ($)", bty = "n", cex = 0.8, xpd = TRUE)
+  # adding legend
+  legend("right", inset = c(-.75, 0), legend = qntls, fill = palette, title = "Median Income ($)", bty = "n", cex = 0.8, xpd = TRUE)
 }
 
-# Outer title for the whole set of plots
+# main title for all plots
 mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 1, font = 2)
 
 ```
@@ -251,28 +251,68 @@ mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 
 ### Interpretation
 The maps demonstrate that median income in certain LA zip codes (particularly those to the west) have a much higher median household income than the rest of the city, but over the last six years, the median income in most other LA zip codes has increased. However, there are some that a typical family is at or below the poverty line. We intend to investigate if there is a spatial correlation between these poorer zip codes and the incidence of crimes, particularly homicide, and whether this is affected by pandemic conditions. 
 
-## Frequency of Top 10 Crimes
+## Crime Rates Compared to Median Household Income
 
 ```{r}
-crime_frequency <- data.frame(table(crime_la$Crm.Cd.Desc))
-top_10_crimes <- crime_frequency[order(-crime_frequency$Freq), ][1:10, ]
+# using latitude and longitude to obtain the zip codes of the crime locations
+# crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
+# id_lat_long_crime_la <- subset(crime_la, select = c("LAT", "LON", "DR_NO", "year"))
+
+# taking a random sample to reduce load on model
+#set.seed(123)
+#sampled_ids <- id_lat_long_crime_la[sample(1:nrow(id_lat_long_crime_la), 500),]
+#rownames(sampled_ids) <- NULL
+#zip_codes <- reverse_geocode(sampled_ids, lat = LAT, long = LON, verbose = TRUE)
+#write.csv(zip_codes, "sampled_crimes.csv")
+zip_codes <- read.csv("sampled_crimes.csv")
+
+zip_codes$ZCTA5CE20 <- stringr::str_extract(zip_codes$address, "\\d{5}")
+
+crime_income_sample <- zip_codes %>% inner_join(unique(subset(zcta_no_NAs, select = c("ZCTA5CE20", "S1903_C03_001E", "year"))), by = c("ZCTA5CE20", "year"))
+
+# this takes a while, so loading in this csv instead
+
+crime_income_sample <- zip_codes %>% inner_join(unique(subset(zcta_no_NAs, select = c("ZCTA5CE20", "S1903_C03_001E", "year"))), by = c("ZCTA5CE20", "year"))
+
+crime_income_per_zip <- crime_income_sample %>% 
+  group_by(ZCTA5CE20) %>% 
+  summarize(number_of_crimes = n(),
+            cali_median_income = mean(S1903_C03_001E)) %>%
+  ungroup()
+
+plot(x = crime_income_per_zip$cali_median_income, 
+     y = crime_income_per_zip$number_of_crimes, 
+     type = "p",
+     ylab = "Number of Crimes",  
+     xlab = "Median Income ($)",  
+     main = "Crime vs. Median Income by ZIP Code",
+     bty = "l")
 ```
 
+### Based on this plot, we do not observe a clear trend between the number of crimes committed and the median income in that zip code. However, this scatterplot only accounts for a small portion of the dataset and averages across pre- and post-pandemic conditions. Future visualizations and analyses could consider pandemic vs non-pandemic years as variables. 
 
-## Homicide 
+# Regression Analyses
 
 ## Using Regression to Examine Weekly Crime Rates
 
 ```{r}
-
 weekly_counts$CrimesLag <- c(NA, weekly_counts$Crimes[-nrow(weekly_counts)])
 
 ar1_trend_regression <- lm(Crimes ~ Index + CrimesLag, data = weekly_counts, na.action = na.omit)
 
 summary(ar1_trend_regression)
-
 ```
-
 ### Interpretation
 
 The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
+
+## Basic Regression Between Median Income and Crimes per Zip Code
+
+```{r}
+lm_income_crimes <- lm(number_of_crimes ~ cali_median_income, data = crime_income_per_zip)
+
+summary(lm_income_crimes)
+```
+### Interpretation
+
+Based on the p-value, we observe that median income is not significant at a 0.05 level, meaning it does not significantly decrease the amount of crimes committed. The r^2 value additionally tells us that the income only explains a small portion of the variation in the number of crimes. As stated with the scatterplot, a larger sample and considering other factors might yield different results. 
