@@ -316,3 +316,5 @@ summary(lm_income_crimes)
 ### Interpretation
 
 Based on the p-value, we observe that median income is not significant at a 0.05 level, meaning it does not significantly decrease the amount of crimes committed. The r^2 value additionally tells us that the income only explains a small portion of the variation in the number of crimes. As stated with the scatterplot, a larger sample and considering other factors might yield different results. 
+
+# Bibliography
