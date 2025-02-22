@@ -26,7 +26,7 @@ The codebook for this dataset can be found here: https://data.lacity.org/Public-
 
 # Loading in packages and dataset
 
-```{r, eval=FALSE}
+```{r, echo=FALSE}
 library(sf)
 library(tidygeocoder)
 library(tidyverse) # using only for joining datasets to build map visual
