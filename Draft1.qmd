@@ -8,7 +8,8 @@ format:
  pdf: default
 
 fontsize: 10pt
-
+toc: true                   # add table of contents at the beginning
+toc-depth: 3               # Only titles that start with # or ##
 geometry: margin=1in
 bibliography: references.bib
 ---
@@ -21,11 +22,16 @@ Using National Incident-Based Reporting System (NIBRS) data, this report will ex
 
 We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the Los Angeles Police Department (LAPD), who regularly updates Crime Data on the Data.gov website. The data includes all crime data, which we will subset to focus on homicide, and details such as date, location, and offense type.
 
-The codebook for this dataset can be found here: https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8/about_data. 
+The codebook for this dataset can be found here: https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8/about_data.
 
 # Loading in packages and dataset
 
-```{r}
+```{r, eval=FALSE}
+library(sf)
+library(tidygeocoder)
+library(tidyverse) # using only for joining datasets to build map visual
+library(RColorBrewer)
+
 # Primary datasets: Crime Data 2020-Present and 2010-2019
 crime_la_2010_2019 <- read.csv("Raw_Data/Crime_Data_from_2010_to_2019.csv")
 
@@ -50,8 +56,9 @@ cali_median_income <- do.call(rbind, california_median_income_2018_2023)
 cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
 ```
 
+# Plots
 
-# Plot 1 - Examining Crime Density from 2010–2019 and 2020-Present
+## Examining Crime Density from 2010–2019 and 2020-Present
 
 ```{r}
 
@@ -84,10 +91,10 @@ smoothScatter(
 par(mfrow = c(1, 1))
 
 ```
+
 Both time periods show major clusters of reported crimes in central LA. The 2020–present data appears slightly more dispersed to the north, but overall patterns remain similar looking.
 
-
-# Plot 2 - Examining Number Of Crimes Over Time
+## Examining Number Of Crimes Over Time
 
 ```{r}
 crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
@@ -120,23 +127,7 @@ abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index),
 
 The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
 
-# Using Regression to Predict ____
-
-```{r}
-
-weekly_counts$CrimesLag <- c(NA, weekly_counts$Crimes[-nrow(weekly_counts)])
-
-ar1_trend_regression <- lm(Crimes ~ Index + CrimesLag, data = weekly_counts, na.action = na.omit)
-
-summary(ar1_trend_regression)
-
-```
-# Interpretation
-
-The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
-
-
-# Plot 3 Crime rate frequency by day of the week 
+## Crime rate frequency by day of the week
 
 ```{r}
 # Convert Date.Rptd to Date format (ignore time part)
@@ -164,12 +155,12 @@ barplot(crime_counts, col = "lightblue",
         xlab = "Day of the Week", ylab = "Number of Crimes",
         names.arg = names(crime_counts), las = 1, cex.names = 0.8, cex.axis = 0.6)
 ```
-# Interpretation
 
-The number of crimes are rather evenly distributed, with the weekends having slightly lower crime compared to week days. 
+### Interpretation
 
+The number of crimes are rather evenly distributed, with the weekends having slightly lower crime compared to week days.
 
-# Plot 4 Gender Distribution for crimes over time
+## Gender Distribution for crimes over time
 
 ```{r}
 # Remove missing values and empty strings in Vict.Sex column
@@ -192,18 +183,14 @@ pie(
   main = "Distribution of Crime Victims by Gender"
 )
 ```
-# Interpretation
 
-From the pie chart, we can see that around 50% of the crime is commited by male, 45% by female and 5% by non-binary. 
+### Interpretation
 
-# Plot 5 - Median Household Income by Zip Code in Los Angeles by Year
+From the pie chart, we can see that around 50% of the crime is commited by male, 45% by female and 5% by non-binary.
+
+## Median Household Income by Zip Code in Los Angeles by Year
 
 ```{r}
-library(sf)
-library(tidygeocoder)
-library(tidyverse)
-library(RColorBrewer)
-
 zcta <- read_sf(dsn = "Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
 LA_zctas <- read.csv("Raw_Data/zctas.csv") #obtained using zipcodeR::search_city("Los Angeles", "CA") and then checking which zip codes are also ZCTAs
 
@@ -216,16 +203,17 @@ zcta_filtered <- zcta %>% inner_join(LA_zctas, by = "ZCTA5CE20")
 # getting LA median income using joined file
 median_household_income <- cali_median_income %>% select(ZCTA, S1903_C03_001E, year)
 
-median_household_income$S1903_C03_001E <- as.integer(median_household_income$S1903_C03_001E)
-
 zcta_with_data <- zcta_filtered %>% inner_join(median_household_income, join_by("ZCTA5CE20" == "ZCTA"))
 
 # remove NAs
 zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E), S1903_C03_001E != "-")
 
+zcta_no_NAs$S1903_C03_001E <- as.integer(zcta_no_NAs$S1903_C03_001E)
+
 palette <- brewer.pal(7, "Greens")
 
-par(mfrow = c(2, 3), mar = c(2, 2, 2, 6), oma = c(0, 0, 4, 0))
+# setting a layout for a 2x3 grid, margins adjusted to fit the plots, oma() for outer margin area.
+par(mfrow = c(2, 3), mar = c(1, 1, 1, 6), oma = c(0, 0, 3, 0), cex.main = 1.5)
 
 yrs <- 2018:2023
 
@@ -240,20 +228,35 @@ for (yr in yrs) {
   plot(st_geometry(subset_data),
        col = palette[bins],
        border = 'grey',
-       axes = FALSE,
-       main = yr,
-       cex.main = 1.5)
+       axes = FALSE)
+  title(yr, line = -1)
   
   # Add legend
   legend("right", inset = c(-0.5, 0), legend = round(quantile(subset_data$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0),
          fill = palette, title = "Median Income ($)", bty = "n", cex = 0.8, xpd = TRUE)
 }
-mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 1, font = 2)
+mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 1.5, font = 2)
 ```
 
-# Plot 6 - Frequency of Top 10 Crimes
+## Frequency of Top 10 Crimes
 
 ```{r}
 crime_frequency <- data.frame(table(crime_la$Crm.Cd.Desc))
 top_10_crimes <- crime_frequency[order(-crime_frequency$Freq), ][1:10, ]
 ```
+
+## Using Regression to Examine Weekly Crime Rates
+
+```{r}
+
+weekly_counts$CrimesLag <- c(NA, weekly_counts$Crimes[-nrow(weekly_counts)])
+
+ar1_trend_regression <- lm(Crimes ~ Index + CrimesLag, data = weekly_counts, na.action = na.omit)
+
+summary(ar1_trend_regression)
+
+```
+
+### Interpretation
+
+The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
