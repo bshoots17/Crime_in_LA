@@ -35,8 +35,10 @@ crime_la_2020_present <- read.csv("Raw_Data/Crime_Data_from_2020_to_Present.csv"
 
 # Combine the two datasets
 crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
+```
 
-# Secondary datasets
+```{r}
+# Secondary dataset - Median Income by ZCTA
 california_median_income_2018_2023 <- list()
 yrs <- 2018:2023
 for (i in 1:length(yrs)) {
@@ -50,6 +52,14 @@ cali_median_income <- do.call(rbind, california_median_income_2018_2023)
 
 # adding a variable that's just the ZCTA zip code
 cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
+```
+
+```{r}
+# Secondary dataset - COVID cases in Los Angeles County
+covid_14day <- read.csv("Raw_Data/LA_County_Covid19_CSA_14day_case_death_table.csv")
+
+covid_la <- covid_14day %>% filter(grepl("Los Angeles", geo_merge))
+covid_la$area <- gsub("Los Angeles - ", "", covid_la$geo_merge)
 ```
 
 # Exploratory Data Analysis
@@ -348,9 +358,9 @@ Based on the p-value, we observe that median income is not significant at a 0.05
 ## ggplot2 ideas
 
 * histogram (we did a barplot)
-* boxplots!
-* geom_tile - correlations
-* 
+* boxplots! - 
+* geom_tile - correlations - Bianca
+* geom_jitter
 
 # References {.unnumbered}
 
@@ -484,7 +494,7 @@ barplot(crime_counts, col = "lightblue",
         names.arg = names(crime_counts), las = 1, cex.names = 0.8, cex.axis = 0.6)
 ```
 
-## Figure 4 - Gender Distribution for crimes over time {.unnumbered}
+# Figure 4 - Gender Distribution for crimes over time {.unnumbered}
 
 ```{r, eval=FALSE}
 # Remove missing values and empty strings in Vict.Sex column
