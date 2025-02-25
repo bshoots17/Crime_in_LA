@@ -355,12 +355,27 @@ tidy() %>%
 
 Based on the p-value, we observe that median income is not significant at a 0.05 level, meaning it does not significantly decrease the amount of crimes committed. The r\^2 value additionally tells us that the income only explains a small portion of the variation in the number of crimes. As stated with the scatterplot, a larger sample and considering other factors might yield different results.
 
-## ggplot2 ideas
+# ggplot2 ideas
 
-* histogram (we did a barplot)
-* boxplots! - 
-* geom_tile - correlations - Bianca
-* geom_jitter
+## Histogram
+
+## Boxplot - Kaitlyn
+
+```{r}
+crime_by_area <- crime_la %>% group_by(AREA.NAME) %>% summarize(numberOfCrimes = n()) %>% ungroup()
+
+bureaus <- read.csv("Raw_Data/Division_Bureau_Ref.csv")
+
+bureaus$Division <- gsub("77th", "77th Street", bureaus$Division)
+bureaus$Division <- gsub("North", "N", bureaus$Division)
+bureaus$Division <- gsub("Neast", "Northeast", bureaus$Division)
+
+crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Division"))
+```
+
+## geom_tile for correlations - Bianca
+
+## geom_jitter
 
 # References {.unnumbered}
 
