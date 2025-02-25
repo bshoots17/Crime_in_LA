@@ -52,7 +52,7 @@ cali_median_income <- do.call(rbind, california_median_income_2018_2023)
 cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
 ```
 
-# Plots
+# Exploratory Data Analysis
 
 ## Examining Crime Density from 2010–2019 and 2020-Present
 
@@ -90,6 +90,8 @@ par(mfrow = c(1, 1))
 
 ```
 
+### Interpretation
+
 Both time periods show major clusters of reported crimes in central LA. The 2020–present data appears slightly more dispersed to the north, but overall patterns remain similar looking.
 
 ## Examining Number Of Crimes Over Time
@@ -122,6 +124,7 @@ plot(
 abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index), 
        col = "gray", lty = "dotted")
 ```
+### Interpretation
 
 The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
 
@@ -207,8 +210,6 @@ zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E), S1903_C03_001E 
 
 zcta_no_NAs$S1903_C03_001E <- as.integer(zcta_no_NAs$S1903_C03_001E)
 ```
-
-Now, using this joined dataset, create six maps, one for each year.
 
 ```{r, echo=FALSE}
 # quantiles for the entire dataset (from 2018 to 2023) to divide the median income into groups
@@ -320,12 +321,12 @@ tidy() %>%
 
 The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
 
-## Basic Regression Between Median Income and Crimes per Zip Code
+## Regression Between Median Income and Crimes per Zip Code
 
 ```{r, echo=FALSE}
 lm_income_crimes <- lm(number_of_crimes ~ cali_median_income, data = crime_income_per_zip)
 
-summary(lm_income_crimes)
+# summary(lm_income_crimes)
 
 lm_income_crimes %>%
 tidy() %>%
@@ -344,12 +345,19 @@ tidy() %>%
 
 Based on the p-value, we observe that median income is not significant at a 0.05 level, meaning it does not significantly decrease the amount of crimes committed. The r\^2 value additionally tells us that the income only explains a small portion of the variation in the number of crimes. As stated with the scatterplot, a larger sample and considering other factors might yield different results.
 
+## ggplot2 ideas
+
+* histogram (we did a barplot)
+* boxplots!
+* geom_tile - correlations
+* 
+
 # References {.unnumbered}
 
 ::: {#refs}
 :::
 
-# Appendix {.unnumbered}
+# Appendices {.appendix}
 
 ```{r, eval=FALSE}
 library(sf) # for map
@@ -381,7 +389,7 @@ cali_median_income <- do.call(rbind, california_median_income_2018_2023)
 cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
 ```
 
-## Figure 1 - Examining Crime Density from 2010–2019 and 2020-Present {.unnumbered}
+# Figure 1 - Examining Crime Density from 2010–2019 and 2020-Present {.unnumbered}
 
 ```{r, eval=FALSE}
 
@@ -417,7 +425,7 @@ par(mfrow = c(1, 1))
 
 ```
 
-## Figure 2 - Examining Number Of Crimes Over Time {.unnumbered}
+# Figure 2 - Examining Number Of Crimes Over Time {.unnumbered}
 
 ```{r, eval=FALSE}
 crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
@@ -448,7 +456,7 @@ abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index),
        col = "gray", lty = "dotted")
 ```
 
-## Figure 3 - Crime rate frequency by day of the week {.unnumbered}
+# Figure 3 - Crime rate frequency by day of the week {.unnumbered}
 
 ```{r, eval=FALSE}
 # Convert Date.Rptd to Date format (ignore time part)
@@ -500,7 +508,7 @@ pie(
 )
 ```
 
-## Figure 5 - Median Household Income by Zip Code in Los Angeles by Year {.unnumbered}
+# Figure 5 - Median Household Income by Zip Code in Los Angeles by Year {.unnumbered}
 
 ```{r, eval=FALSE}
 zcta <- read_sf(dsn = "Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
@@ -559,7 +567,7 @@ mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 
 
 ```
 
-## Figure 6 - Crime Rates Compared to Median Household Income {.unnumbered}
+# Figure 6 - Crime Rates Compared to Median Household Income {.unnumbered}
 
 ```{r, eval=FALSE}
 # using latitude and longitude to obtain the zip codes of the crime locations
