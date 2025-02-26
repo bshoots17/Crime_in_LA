@@ -38,6 +38,10 @@ crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
 ```
 
 ```{r}
+crimes_with_zips <- read.csv("crimes_with_zips.csv") # just inner_join with the crime_la dataset
+```
+
+```{r}
 # Secondary dataset - Median Income by ZCTA
 california_median_income_2018_2023 <- list()
 yrs <- 2018:2023
@@ -384,6 +388,10 @@ crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Di
 
 # Appendices {.appendix}
 
+## Data Wrangling {.unnumbered}
+
+# Reading in Raw Datasets
+
 ```{r, eval=FALSE}
 library(sf) # for map
 library(tidyverse) # using only for joining datasets to build map visual
@@ -412,6 +420,95 @@ cali_median_income <- do.call(rbind, california_median_income_2018_2023)
 
 # adding a variable that's just the ZCTA zip code
 cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
+
+write.csv(cali_median_income, "cali_median_income.csv")
+```
+
+### Zip Codes for Crimes {.unnumbered}
+```{r, eval=FALSE}
+library(sf)
+library(dplyr)
+
+crime_la_2010_2019 <- read.csv("Raw_Data/Crime_Data_from_2010_to_2019.csv")
+
+crime_la_2020_present <- read.csv("Raw_Data/Crime_Data_from_2020_to_Present.csv")
+
+# Combine the two datasets
+crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
+
+crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
+                                  format = "%m/%d/%Y %I:%M:%S %p", 
+                                  tz = "America/Los_Angeles")
+
+crime_la$YearWeek <- format(crime_la$DateParsed, "%Y-%U")
+
+crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
+
+coords <- crime_la %>% select(LAT, LON, DR_NO, year)
+
+zcta <- read_sf(dsn = "Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
+
+  points <- st_as_sf(coords, coords = c("LON", "LAT"), crs = 4326)  # WGS84
+  
+  zcta <- st_transform(zcta, 4326)  # Convert ZCTA to WGS84 if needed
+  cat("Starting Zip Code Retrieval \n")
+  
+  result <- st_join(points, zcta)
+
+  cat("Finished Zip Code Retrieval \n")
+  
+  write.csv(result, "crime_zip_files/all_zips.csv")
+
+crime_zctas <- read.csv("Raw_Data/all_zips.csv")
+colnames(crime_zctas) <- c(colnames(crime_zctas)[-c(1, length(colnames(crime_zctas)))],"LON", "LAT")
+
+crime_zctas$LON <- as.numeric(gsub('c(', "", crime_zctas$LON, fixed = TRUE))
+crime_zctas$LAT <- as.numeric(gsub(')', "", crime_zctas$LAT, fixed = TRUE))
+```
+
+```{r}
+
+duplicates <- as.integer(as.character(data.frame(table(crime_zctas$universal_idx)[table(crime_zctas$universal_idx) > 1]) %>% pull(Var1)))
+
+# there are approximately 200 rows that are duplicated (100 incidents) as the area lies on the intersection between two zctas. 
+duplicate_data <- crime_zctas %>% filter(universal_idx %in% duplicates) 
+
+rev_geo_duplicates <- reverse_geocode(duplicates2, lat = LAT, long = LON)
+# the above query identifies the address of these coordinates as KFC, 8644, Balboa Boulevard, Northridge South Neighborhood Council District, Los Angeles, Los Angeles County, California, 91325, United States. 
+# therefore, we will only keep the 91325 zip code rows.
+
+crime_zctas_no_duplicates <- crime_zctas %>% mutate(duplicate = ifelse(universal_idx %in% duplicate_data$universal_idx & ZCTA5CE20 != 91325, "Drop", "Keep")) %>% filter(duplicate != "Drop") %>% select(-duplicate)
+
+# it's empty now 
+# duplicates <- table(crime_zctas_no_duplicates$universal_idx)[table(crime_zctas_no_duplicates$universal_idx) > 1]
+
+# next, check for NAs
+sum(is.na(crime_zctas_no_duplicates$ZCTA5CE20)) # there are 3724 NAs. Let's find them a zip code
+
+# some also have lat long = 0. We'll find those separately
+no_zipcode_not0 <- crime_zctas_no_duplicates %>% filter(is.na(ZCTA5CE20) & LON != 0)
+
+no_zipcode_not0_zips <- reverse_geocode(no_zipcode_not0, lat = LAT, long = LON)
+
+no_zipcode_not0_zips$ZCTA5CE20 <- stringr::str_extract(no_zipcode_not0_zips$address, "\\d{5}")
+
+no_zipcode_not0_zips <- no_zipcode_not0_zips %>% select(-address)
+
+crime_zctas2 <- crime_zctas_no_duplicates %>% filter(!is.na(ZCTA5CE20))
+
+crime_zctas3 <- rbind(crime_zctas2, no_zipcode_not0_zips)
+
+crime_zctas4 <- crime_zctas3 %>% filter(!is.na(ZCTA5CE20))
+
+write.csv(crime_zctas4, "crimes_with_zips.csv")
+
+no_zipcode_0s <- crime_zctas_no_duplicates %>% filter(is.na(ZCTA5CE20) & LON == 0) %>% pull(DR_NO)
+
+main_dataset_0s <- crime_la %>% filter(DR_NO %in% no_zipcode_0s)
+
+summary(main_dataset_0s)
+
+summary(crime_la)
 ```
 
 # Figure 1 - Examining Crime Density from 2010–2019 and 2020-Present {.unnumbered}
