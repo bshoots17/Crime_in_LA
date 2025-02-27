@@ -1,4 +1,7 @@
 # STAT405
+## Link to datasets
+Download the folder called STAT405 Data and move the Raw_Data and Cleaned_Data folders into your local repository. 
+
 ## How to Use GitHub in Terminal
 1.  Pull changes using "git pull"
 2.  Make your changes in the file
