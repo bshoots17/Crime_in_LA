@@ -28,20 +28,12 @@ library(tidyverse) # using only for joining datasets to build map visual
 library(RColorBrewer) # for map color scheme
 library(tidygeocoder) # to get zip codes of addresses
 
-# Primary datasets: Crime Data 2020-Present and 2010-2019
-crime_la_2010_2019 <- read.csv("Raw_Data/Crime_Data_from_2010_to_2019.csv")
+# primary dataset
+crime_la <- read.csv("Cleaned_Data/all_crimes_2010_present.csv")
 
-crime_la_2020_present <- read.csv("Raw_Data/Crime_Data_from_2020_to_Present.csv")
+# primary dataset zip code and geometry data
+crimes_with_zips <- read.csv("Cleaned_Data/crimes_with_zips.csv") # just inner_join with the crime_la dataset
 
-# Combine the two datasets
-crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
-```
-
-```{r}
-crimes_with_zips <- read.csv("crimes_with_zips.csv") # just inner_join with the crime_la dataset
-```
-
-```{r}
 # Secondary dataset - Median Income by ZCTA
 california_median_income_2018_2023 <- list()
 yrs <- 2018:2023
@@ -52,13 +44,11 @@ for (i in 1:length(yrs)) {
   california_median_income_2018_2023[[i]] <- obj
 }
 
-cali_median_income <- do.call(rbind, california_median_income_2018_2023)
+cali_median_income <- read.csv("Cleaned_Data/cali_median_income.csv")
 
 # adding a variable that's just the ZCTA zip code
 cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
-```
 
-```{r}
 # Secondary dataset - COVID cases in Los Angeles County
 covid_14day <- read.csv("Raw_Data/LA_County_Covid19_CSA_14day_case_death_table.csv")
 
@@ -392,7 +382,7 @@ crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Di
 
 # Reading in Raw Datasets
 
-```{r, eval=FALSE}
+```{r Wrangling Main, eval=FALSE}
 library(sf) # for map
 library(tidyverse) # using only for joining datasets to build map visual
 library(RColorBrewer) # for map color scheme
@@ -405,7 +395,9 @@ crime_la_2020_present <- read.csv("Raw_Data/Crime_Data_from_2020_to_Present.csv"
 
 # Combine the two datasets
 crime_la <- rbind(crime_la_2010_2019, crime_la_2020_present)
+```
 
+```{r Combining Median Income, eval=FALSE}
 # Secondary datasets
 california_median_income_2018_2023 <- list()
 yrs <- 2018:2023
@@ -425,7 +417,7 @@ write.csv(cali_median_income, "cali_median_income.csv")
 ```
 
 ### Zip Codes for Crimes {.unnumbered}
-```{r, eval=FALSE}
+```{r Get Zip Codes, eval=FALSE}
 library(sf)
 library(dplyr)
 
@@ -466,7 +458,7 @@ crime_zctas$LON <- as.numeric(gsub('c(', "", crime_zctas$LON, fixed = TRUE))
 crime_zctas$LAT <- as.numeric(gsub(')', "", crime_zctas$LAT, fixed = TRUE))
 ```
 
-```{r}
+```{r Get Zip Codes 2, eval=FALSE}
 
 duplicates <- as.integer(as.character(data.frame(table(crime_zctas$universal_idx)[table(crime_zctas$universal_idx) > 1]) %>% pull(Var1)))
 
@@ -513,7 +505,7 @@ summary(crime_la)
 
 # Figure 1 - Examining Crime Density from 2010–2019 and 2020-Present {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Figure 1 Code, eval=FALSE}
 
 par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
 
@@ -549,7 +541,7 @@ par(mfrow = c(1, 1))
 
 # Figure 2 - Examining Number Of Crimes Over Time {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Figure 2 Code, eval=FALSE}
 crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
                                   format = "%m/%d/%Y %I:%M:%S %p", 
                                   tz = "America/Los_Angeles")
@@ -580,7 +572,7 @@ abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index),
 
 # Figure 3 - Crime rate frequency by day of the week {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Figure 3 Code, eval=FALSE}
 # Convert Date.Rptd to Date format (ignore time part)
 #crime_la$Date.Rptd
 crime_la$Date <- as.Date(substr(crime_la$Date.Rptd, 1, 10), format = "%m/%d/%Y")
@@ -608,7 +600,7 @@ barplot(crime_counts, col = "lightblue",
 
 # Figure 4 - Gender Distribution for crimes over time {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Figure 4 Code, eval=FALSE}
 # Remove missing values and empty strings in Vict.Sex column
 crime_la <- subset(crime_la, Vict.Sex != "" & !is.na(Vict.Sex))
 
@@ -632,7 +624,7 @@ pie(
 
 # Figure 5 - Median Household Income by Zip Code in Los Angeles by Year {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Figure 5 Wrangling, eval=FALSE}
 zcta <- read_sf(dsn = "Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
 LA_zctas <- read.csv("Raw_Data/zctas.csv") #obtained using zipcodeR::search_city("Los Angeles", "CA") and then checking which zip codes are also ZCTAs
 
@@ -653,7 +645,7 @@ zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E), S1903_C03_001E 
 zcta_no_NAs$S1903_C03_001E <- as.integer(zcta_no_NAs$S1903_C03_001E)
 ```
 
-```{r, eval=FALSE}
+```{r Figure 5 Code, eval=FALSE}
 # quantiles for the entire dataset (from 2018 to 2023) to divide the median income into groups
 qntls <- round(quantile(zcta_no_NAs$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0)
 
@@ -691,7 +683,7 @@ mtext("Median Household Income by Year and Zip Code in LA", outer = TRUE, cex = 
 
 # Figure 6 - Crime Rates Compared to Median Household Income {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Figure 6 Code, eval=FALSE}
 # using latitude and longitude to obtain the zip codes of the crime locations
 # crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
 # id_lat_long_crime_la <- subset(crime_la, select = c("LAT", "LON", "DR_NO", "year"))
@@ -729,7 +721,7 @@ plot(x = crime_income_per_zip$cali_median_income,
 
 ## Crime \~ Week Regression Code {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Regression 1, eval=FALSE}
 library(broom)
 
 weekly_counts$CrimesLag <- c(NA, weekly_counts$Crimes[-nrow(weekly_counts)])
@@ -751,7 +743,7 @@ tidy() %>%
 
 ## Crime \~ Income Regression Code {.unnumbered}
 
-```{r, eval=FALSE}
+```{r Regression 2, eval=FALSE}
 lm_income_crimes <- lm(number_of_crimes ~ cali_median_income, data = crime_income_per_zip)
 
 summary(lm_income_crimes)
