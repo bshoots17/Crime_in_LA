@@ -316,8 +316,6 @@ crime_la_monthly <- crime_la %>%
   group_by(month_year) %>% 
   summarize(num_crimes = n())
 
-crime_la_monthly$high_low_crime <- as.factor(ifelse(crime_la_monthly$num_crimes > avg_crimes, "Above Average", "Below Average"))
-
 evictions_la_indexed_crimes <- evictions_la_indexed %>% left_join(crime_la_monthly, by = "month_year")
 
 avg_crimes <- mean(evictions_la_indexed_crimes$num_crimes)
