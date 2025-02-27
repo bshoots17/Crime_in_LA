@@ -35,15 +35,6 @@ crime_la <- read.csv("Cleaned_Data/all_crimes_2010_present.csv")
 crimes_with_zips <- read.csv("Cleaned_Data/crimes_with_zips.csv") # just inner_join with the crime_la dataset
 
 # Secondary dataset - Median Income by ZCTA
-california_median_income_2018_2023 <- list()
-yrs <- 2018:2023
-for (i in 1:length(yrs)) {
-  obj <- read.csv(paste0("Raw_Data/ACSST5Y",yrs[[i]],".S1903-Data.csv"), skip = 0)
-  obj <- obj[-1,]
-  obj$year <- yrs[[i]]
-  california_median_income_2018_2023[[i]] <- obj
-}
-
 cali_median_income <- read.csv("Cleaned_Data/cali_median_income.csv")
 
 # adding a variable that's just the ZCTA zip code
@@ -368,6 +359,8 @@ crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Di
 ```
 
 ## geom_tile for correlations - Bianca
+
+
 
 ## geom_jitter
 
