@@ -22,7 +22,7 @@ We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowi
 
 The codebook for this dataset can be found here: https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8/about_data.
 
-```{r, output=FALSE, echo=FALSE}
+```{r DATA, output=FALSE, echo=FALSE}
 library(sf) # for map
 library(tidyverse) # using only for joining datasets to build map visual
 library(RColorBrewer) # for map color scheme
@@ -45,6 +45,8 @@ covid_14day <- read.csv("Raw_Data/LA_County_Covid19_CSA_14day_case_death_table.c
 
 covid_la <- covid_14day %>% filter(grepl("Los Angeles", geo_merge))
 covid_la$area <- gsub("Los Angeles - ", "", covid_la$geo_merge)
+
+evictions_la <- read.csv("Raw_Data/LA_evictions.csv")
 ```
 
 # Exploratory Data Analysis
@@ -288,6 +290,60 @@ plot(x = crime_income_per_zip$cali_median_income,
 
 Based on this plot, we do not observe a clear trend between the number of crimes committed and the median income in that zip code. However, this scatterplot only accounts for a small portion of the dataset and averages across pre- and post-pandemic conditions. Future visualizations and analyses could consider pandemic vs non-pandemic years as variables.
 
+# Exploratory Data Analysis With ggplot2
+
+## Histogram
+```{r}
+# fix mistake
+evictions_la$Date.Received <- gsub("2205", "2025", evictions_la$Date.Received)
+
+crime_la_monthly <- crime_la %>% group_by(Year)
+# convert to date
+evictions_la$month_year <- format(as.Date(evictions_la$Date.Received, format="%m-%d-%Y"), "%Y-%m")
+
+# get unique months
+unique_months <- data.frame(month_year = sort(unique(evictions_la$month_year)), index = 1:length(unique(evictions_la$month_year)))
+
+evictions_la_indexed <- evictions_la %>% left_join(unique_months, by = "month_year")
+
+ggplot(data = evictions_la_indexed, aes(x = index)) + 
+  geom_histogram(bins = nrow(unique_months)) +
+  scale_x_continuous(breaks=unique_months$index,
+        labels=unique_months$month_year) + 
+  theme(axis.text.x = element_text(angle = 285, vjust = 0.5, hjust=1),
+        axis.title.x = element_text(vjust = -.75),
+        plot.title = element_text(size=12)) + 
+  labs(x = "Month and Year of Eviction Notice Receipt", y = "Number of Evictions", title = "Monthly Frequency of Evictions in the City of Los Angeles \nFebruary 2023 to February 2025") + 
+  
+```
+
+## Boxplot - Kaitlyn
+
+```{r}
+crime_by_area <- crime_la %>% group_by(AREA.NAME) %>% summarize(numberOfCrimes = n()) %>% ungroup()
+
+bureaus <- read.csv("Raw_Data/Division_Bureau_Ref.csv")
+
+bureaus$Division <- gsub("77th", "77th Street", bureaus$Division)
+bureaus$Division <- gsub("North", "N", bureaus$Division)
+bureaus$Division <- gsub("Neast", "Northeast", bureaus$Division)
+
+crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Division"))
+```
+
+## geom_tile for correlations - Bianca
+
+```{r, echo=FALSE}
+# creating dataset for correlations
+
+```
+
+## geom_jitter
+
+## Plot 5
+
+## Plot 6
+
 # Regression Analyses
 
 ## Regression to Examine Weekly Crime Rates
@@ -339,30 +395,6 @@ tidy() %>%
 ### Interpretation
 
 Based on the p-value, we observe that median income is not significant at a 0.05 level, meaning it does not significantly decrease the amount of crimes committed. The r\^2 value additionally tells us that the income only explains a small portion of the variation in the number of crimes. As stated with the scatterplot, a larger sample and considering other factors might yield different results.
-
-# ggplot2 ideas
-
-## Histogram
-
-## Boxplot - Kaitlyn
-
-```{r}
-crime_by_area <- crime_la %>% group_by(AREA.NAME) %>% summarize(numberOfCrimes = n()) %>% ungroup()
-
-bureaus <- read.csv("Raw_Data/Division_Bureau_Ref.csv")
-
-bureaus$Division <- gsub("77th", "77th Street", bureaus$Division)
-bureaus$Division <- gsub("North", "N", bureaus$Division)
-bureaus$Division <- gsub("Neast", "Northeast", bureaus$Division)
-
-crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Division"))
-```
-
-## geom_tile for correlations - Bianca
-
-
-
-## geom_jitter
 
 # References {.unnumbered}
 
