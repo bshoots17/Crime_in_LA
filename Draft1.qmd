@@ -339,7 +339,7 @@ This histogram plots the frequency of evictions in Los Angeles from February 202
 
 ## Boxplot - Kaitlyn
 
-```{r}
+```{r, echo=FALSE}
 crime_by_area <- crime_la %>% group_by(AREA.NAME) %>% summarize(numberOfCrimes = n()) %>% ungroup()
 
 bureaus <- read.csv("Raw_Data/Division_Bureau_Ref.csv")
@@ -354,9 +354,31 @@ crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Di
 ## geom_tile for correlations - Bianca
 
 ```{r, echo=FALSE}
+library(lubridate)
 # creating dataset for correlations
 
 # since we do not have pre- and post- pandemic city of LA data, we are instead using LA county data for evictions. 
+LA_county_evictions <- read.csv("Raw_Data/LA_county_evictions.csv")
+
+# covid data
+covid_la$date <- ymd(covid_la$ep_date)
+covid_la$month <- month(covid_la$date)
+covid_la$year <- year(covid_la$date)
+covid_la$date <- day(covid_la$date)
+# since there is a 7 day lag in reporting, let's do monthly = cases on the 21st and on the 5th of the next month.
+covid_la$lagged <- covid_la$date + 7
+
+covid_la_lagged <- covid_la %>% filter(lagged %in% c(21, 35)) %>% arrange(month, year)
+
+covid_la_monthly <- covid_la_lagged %>% group_by(month, year) %>% summarize(cases = sum(cases_14day)) %>% ungroup() %>% arrange(year, month)
+
+covid_la_monthly$index <- 1:nrow(covid_la_monthly)
+# base plot shows that this does in fact mirror LA county so the case numbers should be accurate
+# plot(y = covid_la_monthly$cases, x = covid_la_monthly$index, type = "l")
+
+crime_la_monthly$date <- ymd(paste0(crime_la_monthly$month_year, "-01"))
+crime_la_monthly$month <- month(crime_la_monthly$date)
+crime_la_monthly$year <- year(crime_la_monthly$date)
 ```
 
 ## geom_jitter
