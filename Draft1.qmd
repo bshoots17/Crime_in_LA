@@ -293,7 +293,7 @@ Based on this plot, we do not observe a clear trend between the number of crimes
 # Exploratory Data Analysis With ggplot2
 
 ## Number of Evictions and Crime Levels Per Month
-```{r}
+```{r, echo=FALSE}
 # fix mistake
 evictions_la$Date.Received <- gsub("2205", "2025", evictions_la$Date.Received)
 
