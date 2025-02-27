@@ -48,9 +48,6 @@ cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
 # Secondary dataset - COVID cases in Los Angeles County
 covid_14day <- read.csv("Raw_Data/LA_County_Covid19_CSA_14day_case_death_table.csv")
 
-covid_la <- covid_14day %>% filter(grepl("Los Angeles", geo_merge))
-covid_la$area <- gsub("Los Angeles - ", "", covid_la$geo_merge)
-
 evictions_la <- read.csv("Raw_Data/LA_evictions.csv")
 ```
 
@@ -364,14 +361,14 @@ library(lubridate)
 LA_county_evictions <- read.csv("Raw_Data/LA_county_evictions.csv")
 
 # covid data
-covid_la$date <- ymd(covid_la$ep_date)
-covid_la$month <- month(covid_la$date)
-covid_la$year <- year(covid_la$date)
-covid_la$date <- day(covid_la$date)
+covid_14day$date <- ymd(covid_la$ep_date)
+covid_14day$month <- month(covid_la$date)
+covid_14day$year <- year(covid_la$date)
+covid_14day$date <- day(covid_la$date)
 # since there is a 7 day lag in reporting, let's do monthly = cases on the 21st and on the 5th of the next month.
-covid_la$lagged <- covid_la$date + 7
+covid_14day$lagged <- covid_la$date + 7
 
-covid_la_lagged <- covid_la %>% filter(lagged %in% c(21, 35)) %>% arrange(month, year)
+covid_la_lagged <- covid_14day %>% filter(lagged %in% c(21, 35)) %>% arrange(month, year)
 
 covid_la_monthly <- covid_la_lagged %>% group_by(month, year) %>% summarize(cases = sum(cases_14day)) %>% ungroup() %>% arrange(year, month)
 
