@@ -297,7 +297,6 @@ Based on this plot, we do not observe a clear trend between the number of crimes
 # fix mistake
 evictions_la$Date.Received <- gsub("2205", "2025", evictions_la$Date.Received)
 
-crime_la_monthly <- crime_la %>% group_by(Year)
 # convert to date
 evictions_la$month_year <- format(as.Date(evictions_la$Date.Received, format="%m-%d-%Y"), "%Y-%m")
 
@@ -306,16 +305,31 @@ unique_months <- data.frame(month_year = sort(unique(evictions_la$month_year)), 
 
 evictions_la_indexed <- evictions_la %>% left_join(unique_months, by = "month_year")
 
-ggplot(data = evictions_la_indexed, aes(x = index)) + 
-  geom_histogram(bins = nrow(unique_months)) +
+# create color scheme
+crime_la$month_year <- format(crime_la$DateParsed, "%Y-%m")
+crime_la_monthly <- crime_la %>% 
+  group_by(month_year) %>% 
+  summarize(num_crimes = n())
+
+avg_crimes <- mean(evictions_la_indexed_crimes$num_crimes)
+
+crime_la_monthly$high_low_crime <- as.factor(ifelse(crime_la_monthly$num_crimes > avg_crimes, "Above Average", "Below Average"))
+
+evictions_la_indexed_crimes <- evictions_la_indexed %>% left_join(crime_la_monthly, by = "month_year")
+
+ggplot(data = evictions_la_indexed_crimes, aes(x = index)) + 
+  geom_histogram(aes(fill = high_low_crime), bins = nrow(unique_months)) +
   scale_x_continuous(breaks=unique_months$index,
         labels=unique_months$month_year) + 
-  theme(axis.text.x = element_text(angle = 285, vjust = 0.5, hjust=1),
+  labs(x = "Month and Year of Eviction Notice Receipt", y = "Number of Evictions", title = "Monthly Frequency of Evictions and Crimes in the City of Los Angeles \nFebruary 2023 to February 2025", fill = "Crime Level") +
+  ggthemes::scale_fill_fivethirtyeight() + 
+  ggthemes::theme_stata(scheme = "s1mono") +
+  theme(axis.text.x = element_text(angle = 300, vjust = 0.5, hjust = -.1),
         axis.title.x = element_text(vjust = -.75),
-        plot.title = element_text(size=12)) + 
-  labs(x = "Month and Year of Eviction Notice Receipt", y = "Number of Evictions", title = "Monthly Frequency of Evictions in the City of Los Angeles \nFebruary 2023 to February 2025") + 
-  
+        plot.title = element_text(size=12))
 ```
+### Interpretation
+
 
 ## Boxplot - Kaitlyn
 
