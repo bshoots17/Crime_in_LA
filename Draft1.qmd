@@ -349,6 +349,9 @@ bureaus$Division <- gsub("North", "N", bureaus$Division)
 bureaus$Division <- gsub("Neast", "Northeast", bureaus$Division)
 
 crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Division"))
+
+ggplot(crime_by_area, aes(y = numberOfCrimes, group = Bureau, x = Bureau)) + 
+        geom_boxplot(aes(fill = Bureau))
 ```
 
 ## geom_tile for correlations - Bianca
