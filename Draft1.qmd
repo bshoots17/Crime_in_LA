@@ -383,7 +383,31 @@ crime_la_monthly$year <- year(crime_la_monthly$date)
 
 ## geom_jitter
 
+```{r, echo=FALSE}
+ggplot(crime_la, aes(x = DateParsed, y = Vict.Sex, color = Vict.Sex)) +
+  geom_jitter(alpha = 0.4, width = 0.2) +
+  labs(title = "Crime Over Time by Gender",
+       x = "Date",
+       y = "Gender") +
+  theme_minimal()
+
+```
+
 ## Plot 5
+
+```{r, echo=FALSE}
+
+crime_la$Hour <- as.numeric(format(crime_la$DateParsed, "%H"))
+
+ggplot(crime_la, aes(x = Hour, fill = ..density..)) +
+  geom_density(alpha = 0.5, color = "black") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Crime Density Per Hour",
+       x = "Hour",
+       y = "Density") +
+  theme_minimal()
+
+```
 
 ## Plot 6
 
