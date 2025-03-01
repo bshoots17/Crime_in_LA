@@ -350,6 +350,9 @@ crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Di
 ggplot(crime_by_area, aes(y = numberOfCrimes, group = Bureau, x = Bureau)) + 
         geom_boxplot(aes(fill = Bureau))
 ```
+###Interpretation 
+
+This boxplot shows the number of crimes in different bureaus of Los Angeles. We categorized them into Central, South, Valley, and West. The South bureau has the highest median number of crimes, as well as the largest variability, while the Central, Valley, and West bureaus have relatively similar distributions with lower crime counts.The outliers suggests some months had significantly lower crime counts than others. This visualization helps us understand how crime is distributed across different regions, with the South experiencing the highest fluctuation and overall crime levels.
 
 ## geom_tile for correlations - Bianca
 
