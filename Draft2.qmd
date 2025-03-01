@@ -446,45 +446,25 @@ ggplot(crime_la, aes(x = Hour, fill = ..density..)) +
 ## Time series analyzing homicide rate trends over time by socioeconomic quartiles
 
 ```{r, echo=FALSE}
-# Filter only homicide cases
-homicides <- crime_la %>%
-  inner_join(crimes_with_zips, by = "crime_id") %>%  
-  filter(offense_type == "HOMICIDE") %>%
-  mutate(date = as.Date(date)) 
-
-# Join homicide data with income data
-homicides <- homicides %>%
-  left_join(cali_median_income, by = c("zip_code" = "ZCTA"))
-
-# Convert median income to numeric if needed
+# Data Preparation
+homicides <- crime_la %>% inner_join(crimes_with_zips, by = "crime_id") %>% filter(offense_type == "HOMICIDE") %>% mutate(date = as.Date(date)) 
+homicides <- homicides %>% left_join(cali_median_income, by = c("zip_code" = "ZCTA"))
 homicides$median_income <- as.numeric(homicides$median_income)
 
-# Create income quartiles
-homicides <- homicides %>%
-  mutate(income_quartile = ntile(median_income, 4))  # Divides into 4 quartiles
-
-# Aggregate homicide counts by year and income quartile
-homicide_trends <- homicides %>%
-  mutate(year = lubridate::year(date)) %>%
-  group_by(year, income_quartile) %>%
-  summarize(homicide_count = n(), .groups = "drop")
+# Form income quartiles
+homicides <- homicides %>% mutate(income_quartile = ntile(median_income, 4)) 
+homicide_trends <- homicides %>% mutate(year = lubridate::year(date)) %>% group_by(year, income_quartile) %>% summarize(homicide_count = n(), .groups = "drop")
 
 # Plot homicide trends over time by income quartile
 ggplot(homicide_trends, aes(x = year, y = homicide_count, color = factor(income_quartile))) +
   geom_line(size = 1.2) +
   geom_point(size = 2) +
-  scale_color_brewer(palette = "Set1") +
   labs(
-    title = "Homicide Rate Trends Over Time by Socioeconomic Quartiles",
     x = "Year",
     y = "Number of Homicides",
     color = "Income Quartile"
   ) +
-  theme_minimal() +
-  theme(
-    legend.position = "top",
-    text = element_text(size = 14)
-  )
+  theme_minimal()
 ```
 
 ## Plot 6
