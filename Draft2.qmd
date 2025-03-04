@@ -20,7 +20,7 @@ Using National Incident-Based Reporting System (NIBRS) data, this report will ex
 
 We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the Los Angeles Police Department (LAPD), who regularly updates Crime Data on the Data.gov website. The data includes all crime data, which we will subset to focus on homicide, and details such as date, location, and offense type.
 
-The codebook for this dataset can be found here: https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8/about_data.
+The codebook for this dataset can be found here: <https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8/about_data>.
 
 ```{r, setup, include=FALSE}
 knitr::opts_knit$set(root.dir = "..")
@@ -127,6 +127,7 @@ plot(
 abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index), 
        col = "gray", lty = "dotted")
 ```
+
 ### Interpretation
 
 The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
@@ -295,6 +296,7 @@ Based on this plot, we do not observe a clear trend between the number of crimes
 # Exploratory Data Analysis With ggplot2
 
 ## Monthly Frequency of Evictions and Crimes in the City of Los Angeles, February 2023 to February 2025
+
 ```{r, echo=FALSE}
 # fix mistake
 evictions_la$Date.Received <- gsub("2205", "2025", evictions_la$Date.Received)
@@ -331,8 +333,10 @@ ggplot(data = evictions_la_indexed_crimes, aes(x = index)) +
         axis.title.x = element_text(vjust = -.75),
         plot.title = element_text(size=12))
 ```
+
 ### Interpretation
-This histogram plots the frequency of evictions in Los Angeles from February 2023 to February 2025, where the City of Los Angeles Housing Department has published case data. By summarizing both the crime and the evictions datasets by month, we see that the number of evictions was highest in early-mid 2023, and since, there have typically been slightly lower frequencies of evictions. Additionally, we split the number of crimes per month based on the average number of crimes of 14,439 to denote above and below average number of crimes per month. There is a clear split between March and April of 2024, as all months before that had above average crime, and all after had below average. Interestingly, the months where there is below average crime, seem to be the ones with slightly lower numbers of evictions. 
+
+This histogram plots the frequency of evictions in Los Angeles from February 2023 to February 2025, where the City of Los Angeles Housing Department has published case data. By summarizing both the crime and the evictions datasets by month, we see that the number of evictions was highest in early-mid 2023, and since, there have typically been slightly lower frequencies of evictions. Additionally, we split the number of crimes per month based on the average number of crimes of 14,439 to denote above and below average number of crimes per month. There is a clear split between March and April of 2024, as all months before that had above average crime, and all after had below average. Interestingly, the months where there is below average crime, seem to be the ones with slightly lower numbers of evictions.
 
 ## Annual Number of Crimes by Los Angeles Police Department Bureau
 
@@ -352,7 +356,8 @@ ggplot(crime_by_area, aes(y = numberOfCrimes, group = Bureau, x = Bureau)) +
         geom_boxplot(aes(fill = Bureau)) +
   labs(y = "Annual Number of Crimes")
 ```
-### Interpretation 
+
+### Interpretation
 
 This boxplot shows the number of crimes in the four different bureaus of Los Angeles annually. We categorized the areas into their respective Central, South, Valley, and West Bureaus. The South Bureau has the highest median number of crimes, as well as the largest variability, while the Central, Valley, and West bureaus have relatively similar distributions with lower crime counts.The outliers suggests some years had significantly lower crime counts than others. This visualization helps us understand how crime is distributed across different regions, with the South experiencing the highest fluctuation and overall crime levels.
 
@@ -418,8 +423,10 @@ ggplot(data = long_Cor, aes(x = Var1, y = Var2, fill = value)) +
         plot.title = element_text(size=12)) +
   labs(fill = "Correlation")
 ```
+
 ### Interpretation
-This heat map shows the correlations between different variables that could affect the number of crimes committed. Due to difficulties in obtaining city-level data, the unemployment rate, COVID cases, and number of evictions are for Los Angeles County, while the crime data is for the City of Los Angeles. The city comprises about a third of the county's population and the greater county area largely reflects the trends in the city itself. 
+
+This heat map shows the correlations between different variables that could affect the number of crimes committed. Due to difficulties in obtaining city-level data, the unemployment rate, COVID cases, and number of evictions are for Los Angeles County, while the crime data is for the City of Los Angeles. The city comprises about a third of the county's population and the greater county area largely reflects the trends in the city itself.
 
 Here, we see that the most significant correlations for the number of crimes are the unemployment rate, year, and number of evictions. Years is positively correlated with number of crimes, meaning that as time passed, the number of crimes increased. Similarly, as the number of evictions increases, so does the number of crimes. Interestingly, as the unemployment rate increases, the number of crimes decreases, which is the opposite effect of what was expected (one would anticipate that higher unemployment would result in more crime). The LAPD budget interestingly had a medium-strength positive correlation with number of crimes, suggesting we should further examine the increase in the LAPD budget compared to the increase in crimes.
 
@@ -437,9 +444,10 @@ ggplot(homicide_by_gender, aes(x = gender, y = Vict.Age, color = gender)) +
   scale_color_manual(c("M", "F", "N"), values = c("pink2", "blue", "purple")) + 
   theme(legend.position = 'none')
 ```
+
 ### Interpretation
 
-This jitter plot shows us both the frequencies and the demographics of homicide victims in Los Angeles from 2010 to present. Based on the density of the points, we see that most homicide victims in the last 15 years have been men between the ages of around 15 to 65. Additionally, we see that there are not many victims who are toddlers and younger children, but there is a good number of babies who have been killed. This is an intricacy in our data that might be interesting to look into further, particularly into the circumstances of those deaths and potential correlations between reports of child abuse and/or domestic violence and infanticide. 
+This jitter plot shows us both the frequencies and the demographics of homicide victims in Los Angeles from 2010 to present. Based on the density of the points, we see that most homicide victims in the last 15 years have been men between the ages of around 15 to 65. Additionally, we see that there are not many victims who are toddlers and younger children, but there is a good number of babies who have been killed. This is an intricacy in our data that might be interesting to look into further, particularly into the circumstances of those deaths and potential correlations between reports of child abuse and/or domestic violence and infanticide.
 
 ## Frequency of Crimes in Los Angeles Throughout the Day
 
@@ -455,9 +463,10 @@ ggplot(crime_la, aes(x = Hour, y = 0, fill = after_stat(density))) +
   theme_minimal() +
   theme(legend.position = 'none')
 ```
+
 ### Interpretation
 
-This density plot shows the frequency of crimes depending on the hour (in military time) that they occurred. Based on the plot, we see that fewer crimes occur early in the morning (with the lowest at 5 AM). The data peaks at noon, meaning the most crimes occur in that hour of the day. Crimes are more frequent after that, until the early morning. The second most common crime occurrence is 6 PM, or 18 hours. 
+This density plot shows the frequency of crimes depending on the hour (in military time) that they occurred. Based on the plot, we see that fewer crimes occur early in the morning (with the lowest at 5 AM). The data peaks at noon, meaning the most crimes occur in that hour of the day. Crimes are more frequent after that, until the early morning. The second most common crime occurrence is 6 PM, or 18 hours.
 
 ## Time series analyzing homicide rate trends over time by socioeconomic quartiles
 
@@ -496,7 +505,8 @@ ggplot(homicide_trends, aes(x = year, y = homicide_count)) +
 ```
 
 ### Interpretation
-Homicide rates were low pre-pandemic and had a sharp increase since the pandemic, except in areas of low income, where homicide rates were high before the pandemic. In lower income areas, the rates of homicide have decreased significantly since the end of the pandemic. On the other hand, areas of higher-middle and high income have seen large increases in homicide in the six years shown. 
+
+Homicide rates were low pre-pandemic and had a sharp increase since the pandemic, except in areas of low income, where homicide rates were high before the pandemic. In lower income areas, the rates of homicide have decreased significantly since the end of the pandemic. On the other hand, areas of higher-middle and high income have seen large increases in homicide in the six years shown.
 
 # Regression Analyses
 
@@ -563,17 +573,20 @@ crimes_with_zips <- read.csv("0_Data/Cleaned_Data/crimes_with_zips.csv")
 :::
 
 # Data Sources {.unnumbered}
-## Primary Datasets {.unnumbered}
-Crime Data From 2010-2019: https://data.lacity.org/Public-Safety/Crime-Data-from-2010-to-2019/63jg-8b9z/about_data
 
-Crime Data From 2020-Present: https://catalog.data.gov/dataset/crime-data-from-2020-to-present
+## Primary Datasets {.unnumbered}
+
+Crime Data From 2010-2019: <https://data.lacity.org/Public-Safety/Crime-Data-from-2010-to-2019/63jg-8b9z/about_data>
+
+Crime Data From 2020-Present: <https://catalog.data.gov/dataset/crime-data-from-2020-to-present>
 
 ## Secondary Datasets {.unnumbered}
-Los Angeles County Eviction Data: https://calmatters.org/housing/homelessness/2023/11/california-evictions-post-pandemic/
 
-City of Los Angeles Eviction Data: https://housing.lacity.gov/residents/renters/eviction-notices-filed
+Los Angeles County Eviction Data: <https://calmatters.org/housing/homelessness/2023/11/california-evictions-post-pandemic/>
 
-Median Income Data: https://data.census.gov/table/ACSST1Y2023.S1903?q=income
+City of Los Angeles Eviction Data: <https://housing.lacity.gov/residents/renters/eviction-notices-filed>
+
+Median Income Data: <https://data.census.gov/table/ACSST1Y2023.S1903?q=income>
 
 # Appendices {.appendix}
 
@@ -616,6 +629,7 @@ write.csv(cali_median_income, "cali_median_income.csv")
 ```
 
 ##### Zip Codes for Crimes
+
 ```{r Get Zip Codes, eval=FALSE}
 library(sf)
 library(dplyr)
@@ -1104,6 +1118,7 @@ ggplot(homicide_trends, aes(x = year, y = homicide_count)) +
   theme_minimal() +
   scale_fill_viridis_d(option = "plasma", direction = -1)
 ```
+
 #### Crime \~ Week Regression Code {.unnumbered}
 
 ```{r Regression 1, eval=FALSE}
