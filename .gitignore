@@ -10,6 +10,9 @@ Cleaned_Data/
 .RData
 .RDataTmp
 
+# Rproj
+.Rproj
+
 # User-specific files
 .Ruserdata
 
