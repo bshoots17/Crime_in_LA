@@ -13,6 +13,9 @@ Cleaned_Data/
 # Rproj
 .Rproj
 
+# DS_store
+.DS_Store
+
 # User-specific files
 .Ruserdata
 
