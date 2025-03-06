@@ -507,7 +507,11 @@ ggplot(homicide_trends, aes(x = year, y = homicide_count)) +
 
 Homicide rates were low pre-pandemic and had a sharp increase since the pandemic, except in areas of low income, where homicide rates were high before the pandemic. In lower income areas, the rates of homicide have decreased significantly since the end of the pandemic. On the other hand, areas of higher-middle and high income have seen large increases in homicide in the six years shown.
 
-# Regression Analyses
+# Statistical Analyses
+
+To examine the relationship between the number of homicides and various socioeconomic and enforcement factors, we will use a variety of statistical analyses to see if certain factors are more influential in causing increases or decreases in homicide rates. 
+
+For the purposes of this analysis, homicide rate is quantified as the annual number of homicides in a particular entity, whether that is ZIP Code Tabulation Area (ZCTA) or Census Tract. Additionally, we will examine the influence of general geographic location through the latitude and longitude where the homicide was committed. 
 
 ## Regression to Examine Weekly Crime Rates
 
@@ -531,7 +535,7 @@ tidy() %>%
   )
 ```
 
-### Interpretation
+### Discussion
 
 The lagged crime coefficient (0.81949) suggests that a high crime week is often followed by another high crime week. Since the trend term is not significant, there is no clear drift in weekly crime over time.
 
@@ -555,16 +559,41 @@ tidy() %>%
   )
 ```
 
-### Interpretation
+### Discussion
 
 Based on the p-value, we observe that median income is not significant at a 0.05 level, meaning it does not significantly decrease the amount of crimes committed. The r\^2 value additionally tells us that the income only explains a small portion of the variation in the number of crimes. As stated with the scatterplot, a larger sample and considering other factors might yield different results.
 
-## Chi-Square for Zip Code
+## Negative Binomial for Census Block
 
-```{r}
-homicides_by_zip <- homicides %>% group_by(ZCTA5CE20) %>% summarize(HomicideCount = n()) %>% ungroup()
-chisq.test(x = as.character(homicides_by_zip$ZCTA5CE20), y = homicides_by_zip$HomicideCount)
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library(kableExtra)
+crimes_by_cb <- read.csv("0_Data/Cleaned_Data/crimes_by_census_block.csv")
+colnames(crimes_by_cb) <- c(colnames(crimes_by_cb)[-c(1, length(colnames(crimes_by_cb)))],"LON", "LAT")
+
+crimes_by_cb$LON <- as.numeric(gsub('c(', "", crimes_by_cb$LON, fixed = TRUE))
+crimes_by_cb$LAT <- as.numeric(gsub(')', "", crimes_by_cb$LAT, fixed = TRUE))
+
+crimes_by_cb$DateParsed <- as.POSIXct(crimes_by_cb$Date.Rptd, 
+                                  format = "%m/%d/%Y %I:%M:%S %p", 
+                                  tz = "America/Los_Angeles")
+
+crimes_by_cb$YearWeek <- format(crimes_by_cb$DateParsed, "%Y-%U")
+
+crimes_by_cb$year <- as.integer(stringr::str_sub(crimes_by_cb$YearWeek, 1, 4))
+
+homicides_by_cb <- crimes_by_cb %>% filter(Crm.Cd.Desc == "CRIMINAL HOMICIDE") %>% group_by(BLKGRPCE, year) %>% summarize(HomicideCount = n()) %>% ungroup()
+
+# shapiro.test(homicides_by_cb$HomicideCount) # cannot use parametric tests. Strong evidence against normality. 
+
+mean_homicides <- mean(homicides_by_cb$HomicideCount)
+var_homicides <- var(homicides_by_cb$HomicideCount)
+# since variance > mean, use negative binomial 
+library(MASS)
+model <- glm.nb(HomicideCount ~ as.factor(BLKGRPCE), data = homicides_by_cb)
+
+summary(model)
 ```
+### Discussion
 
 ## Model Progression
 ### Initial Spatial Analysis of Crime in Los Angeles
@@ -691,6 +720,8 @@ colnames(crime_zctas) <- c(colnames(crime_zctas)[-c(1, length(colnames(crime_zct
 
 crime_zctas$LON <- as.numeric(gsub('c(', "", crime_zctas$LON, fixed = TRUE))
 crime_zctas$LAT <- as.numeric(gsub(')', "", crime_zctas$LAT, fixed = TRUE))
+
+# Repeat same process for Census Blocks
 ```
 
 ```{r Get Zip Codes 2, eval=FALSE}
