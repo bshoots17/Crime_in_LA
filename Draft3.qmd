@@ -70,17 +70,15 @@ crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
 ## Examining Crime Density from 2010–2019 and 2020-Present
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-la_shape <- read_sf(dsn = "0_Data/Raw_Data/ca_counties", layer = "ca_counties")
+la_shape <- read_sf(dsn = "0_Data/Raw_Data/Cities_and_Communities", layer = "Cities_and_Communities")
 
 la_shape <- st_transform(la_shape, crs = 4326)  
 
-par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
+cali <- read_sf(dsn = "0_Data/Raw_Data/ca_counties", layer = "ca_counties")
 
-plot(la_shape$geometry,xlim = c(-119, -118), ylim = c(33.5, 34.5),
-     xlab = "Longitude",
-  ylab = "Latitude",
-  main = "Crime Density (2010-2019)",
-  cex.main=0.8)
+cali <- st_transform(cali, crs = 4326)  
+
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
 
 smoothScatter(
   x    = crime_la_2010_2019$LON,
@@ -92,15 +90,12 @@ smoothScatter(
   ylab = "Latitude",
   main = "Crime Density (2010–2019)",
   colramp = colorRampPalette(c("white", "skyblue", "blue", "darkblue")),
-  cex.main=0.8,
-  add = TRUE
+  cex.main=0.8
 )
 
-plot(la_shape$geometry,xlim = c(-119, -118), ylim = c(33.5, 34.5),
-     xlab = "Longitude",
-  ylab = "Latitude",
-  main = "Crime Density (2020–Present)",
-  cex.main=0.8)
+plot(la_shape$geometry, lwd=.5, add=TRUE)
+
+plot(cali$geometry, add = TRUE, lwd=.5)
 
 smoothScatter(
   x    = crime_la_2020_present$LON,
@@ -112,9 +107,12 @@ smoothScatter(
   ylab = "Latitude",
   main = "Crime Density (2020–Present)",
   colramp = colorRampPalette(c("white", "pink", "red", "darkred")),
-  cex.main=0.8, 
-  add = TRUE
+  cex.main=0.8
 )
+
+plot(la_shape$geometry, lwd=.5, add=TRUE)
+
+plot(cali$geometry, add = TRUE, lwd=.5)
 
 par(mfrow = c(1, 1))
 
