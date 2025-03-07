@@ -67,6 +67,8 @@ crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
 
 # Exploratory Data Analysis
 
+[ADD MAIN EDA TAKEAWAYS HERE]
+
 ## Examining Crime Density from 2010–2019 and 2020-Present
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
@@ -124,7 +126,7 @@ Both time periods show major clusters of reported crimes in central LA. The 2020
 
 ## Examining Number Of Crimes Over Time
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
                                   format = "%m/%d/%Y %I:%M:%S %p", 
                                   tz = "America/Los_Angeles")
@@ -161,7 +163,7 @@ The time series shows stable weekly crime counts with occasional large spikes. T
 
 ## Crime rate frequency by day of the week
 
-```{r, echo=FALSE, fig.cap = "Crime Occurrences by Day of the Week", message=FALSE}
+```{r, echo=FALSE, fig.cap = "Crime Occurrences by Day of the Week", warning=FALSE, message=FALSE}
 # Convert Date.Rptd to Date format (ignore time part)
 #crime_la$Date.Rptd
 crime_la$Date <- as.Date(substr(crime_la$Date.Rptd, 1, 10), format = "%m/%d/%Y")
@@ -190,7 +192,7 @@ The number of crimes are rather evenly distributed, with the weekends having sli
 
 ## Gender Distribution for crimes over time
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Remove missing values and empty strings in Vict.Sex column
 crime_la <- subset(crime_la, Vict.Sex != "" & !is.na(Vict.Sex))
 
@@ -218,7 +220,7 @@ From the pie chart, we can see that around 50% of the crime is commited by male,
 
 ## Median Household Income by Year and Zip Code in Los Angeles
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 zcta <- read_sf(dsn = "0_Data/Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
 LA_zctas <- read.csv("0_Data/Raw_Data/zctas.csv") #obtained using zipcodeR::search_city("Los Angeles", "CA") and then checking which zip codes are also ZCTAs
 
@@ -239,7 +241,7 @@ zcta_no_NAs <- zcta_with_data %>% filter(!is.na(S1903_C03_001E), S1903_C03_001E 
 zcta_no_NAs$S1903_C03_001E <- as.integer(zcta_no_NAs$S1903_C03_001E)
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # quantiles for the entire dataset (from 2018 to 2023) to divide the median income into groups
 qntls <- round(quantile(zcta_no_NAs$S1903_C03_001E, probs = seq(0, 1, length.out = 7)), 0)
 
@@ -278,7 +280,7 @@ The maps demonstrate that median income in certain LA zip codes (particularly th
 
 ## Crime Rates Compared to Median Household Income
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # using latitude and longitude to obtain the zip codes of the crime locations
 # crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
 # id_lat_long_crime_la <- subset(crime_la, select = c("LAT", "LON", "DR_NO", "year"))
@@ -321,7 +323,7 @@ Based on this plot, we do not observe a clear trend between the number of crimes
 
 ## Monthly Frequency of Evictions and Crimes in the City of Los Angeles, February 2023 to February 2025
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # fix mistake
 evictions_la$Date.Received <- gsub("2205", "2025", evictions_la$Date.Received)
 
@@ -364,7 +366,7 @@ This histogram plots the frequency of evictions in Los Angeles from February 202
 
 ## Annual Number of Crimes by Los Angeles Police Department Bureau
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 crime_la$year <- lubridate::year(crime_la$DateParsed)
 crime_by_area <- crime_la %>% group_by(AREA.NAME, year) %>% summarize(numberOfCrimes = n()) %>% ungroup() 
 
@@ -387,7 +389,7 @@ This boxplot shows the number of crimes in the four different bureaus of Los Ang
 
 ## Correlations Between the Number of Crimes and Different Law Enforcement and Socioeconomic Factors
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 library(lubridate)
 # creating dataset for correlations
 
@@ -456,7 +458,7 @@ Here, we see that the most significant correlations for the number of crimes are
 
 ## Homicide Victims by Age and Gender in Los Angeles 2010-Present
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 homicide_by_gender <- crime_la %>% filter(Crm.Cd.Desc == "CRIMINAL HOMICIDE") %>% select(Vict.Sex, DateParsed, Vict.Age) %>% mutate(gender = factor(Vict.Sex))
 
 levels(homicide_by_gender$gender) <- c("Female", "Male", "Other")
@@ -475,7 +477,7 @@ This jitter plot shows us both the frequencies and the demographics of homicide 
 
 ## Frequency of Crimes in Los Angeles Throughout the Day
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 crime_la$time <- sprintf("%04d",crime_la$TIME.OCC)
 crime_la$Hour <- as.numeric(substr(as.character(crime_la$time), start = 1, stop = 2))
 
@@ -494,7 +496,7 @@ This density plot shows the frequency of crimes depending on the hour (in milita
 
 ## Time series analyzing homicide rate trends over time by socioeconomic quartiles
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 # Data Preparation
 homicides <- crime_la %>% inner_join(crimes_with_zips, by = c("DR_NO", "LAT", "LON","X", "year")) %>% filter(Crm.Cd.Desc == "CRIMINAL HOMICIDE") %>% 
   mutate(date = as.Date(DateParsed),
@@ -532,6 +534,8 @@ ggplot(homicide_trends, aes(x = year, y = homicide_count)) +
 
 Homicide rates were low pre-pandemic and had a sharp increase since the pandemic, except in areas of low income, where homicide rates were high before the pandemic. In lower income areas, the rates of homicide have decreased significantly since the end of the pandemic. On the other hand, areas of higher-middle and high income have seen large increases in homicide in the six years shown.
 
+[BASED ON THESE PLOTS, WE WILL DO XYZ TO EXAMINE ABC]
+
 # Statistical Analyses
 
 To examine the relationship between the number of homicides and various socioeconomic and enforcement factors, we will use a variety of statistical analyses to see if certain factors are more influential in causing increases or decreases in homicide rates. 
@@ -540,7 +544,7 @@ For the purposes of this analysis, homicide rate is quantified as the annual num
 
 ## Regression to Examine Weekly Crime Rates
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 library(broom)
 
 weekly_counts$CrimesLag <- c(NA, weekly_counts$Crimes[-nrow(weekly_counts)])
@@ -566,7 +570,7 @@ The lagged crime coefficient (0.81949) suggests that a high crime week is often 
 
 ## Regression Between Median Income and Crimes per Zip Code - DROP THIS
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 lm_income_crimes <- lm(number_of_crimes ~ cali_median_income, data = crime_income_per_zip)
 
 # summary(lm_income_crimes)
@@ -623,7 +627,7 @@ summary(model)
 ## Model Progression
 ### Initial Spatial Analysis of Crime in Los Angeles
 
-```{r, echo=FALSE, warning=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 homicides_latlon_rounded <- homicides %>% mutate(LAT_rounded = round(LAT, 1),
                                                  LON_rounded = round(LON, 1))
 homicides_lat_long <- homicides_latlon_rounded %>% group_by(LAT_rounded, LON_rounded) %>% summarize(HomicideCount = n()) %>% ungroup()
@@ -634,7 +638,7 @@ summary(linear_model1) # longitude rounded is significant, LAT_rounded is not
 ```
 
 ### By Year
-```{r}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 homicides_lat_long <- homicides_latlon_rounded %>% group_by(LAT_rounded, LON_rounded) %>% summarize(HomicideCount = n()) %>% ungroup()
 
 
