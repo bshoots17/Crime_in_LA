@@ -184,7 +184,7 @@ abline(h = pretty(weekly_counts$Crimes), v = pretty(weekly_counts$Index),
 
 ### Interpretation
 
-The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
+The plot analyzes the number of crimes over time using time series. The time series shows stable weekly crime counts with occasional large spikes. These surges indicate certain weeks where crime reporting jumped significantly, there is a recent interesting surge that seems to mean-revert in 2024.
 
 ## Crime rate frequency by day of the week
 
@@ -213,7 +213,7 @@ barplot(crime_counts, col = "lightblue",
 
 ### Interpretation
 
-The number of crimes are rather evenly distributed, with the weekends having slightly lower crime compared to week days.
+The plot analyzes the crime rate frequency frequency by day of the week using a bar graph. The number of crimes are rather evenly distributed, with the weekends having slightly lower crime compared to week days, which may be a result from more people around during weekends which indirectly suprevises people's behavior. 
 
 ## Gender Distribution for crimes over time
 
@@ -241,7 +241,7 @@ pie(
 
 ### Interpretation
 
-From the pie chart, we can see that around 50% of the crime is commited by male, 45% by female and 5% by non-binary.
+The pie chart analyzes the gender distribution of crime activities. From the chart, we can infer that around 50% of the crime is commited by male, 45% by female and 5% by non-binary. The crime distribution by gender is pretty even
 
 ## Median Household Income by Year and Zip Code in Los Angeles
 
