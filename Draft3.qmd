@@ -53,15 +53,34 @@ cali_median_income$ZCTA <- stringr::str_sub(cali_median_income$NAME, -5)
 covid_14day <- read.csv("0_Data/Raw_Data/LA_County_Covid19_CSA_14day_case_death_table.csv")
 
 evictions_la <- read.csv("0_Data/Raw_Data/LA_evictions.csv")
+
+crime_la$DateParsed <- as.POSIXct(crime_la$Date.Rptd, 
+                                  format = "%m/%d/%Y %I:%M:%S %p", 
+                                  tz = "America/Los_Angeles")
+
+crime_la$month <- lubridate::month(crime_la$DateParsed)
+
+crime_la$YearWeek <- format(crime_la$DateParsed, "%Y-%U")
+
+crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
 ```
 
 # Exploratory Data Analysis
 
 ## Examining Crime Density from 2010–2019 and 2020-Present
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+la_shape <- read_sf(dsn = "0_Data/Raw_Data/ca_counties", layer = "ca_counties")
+
+la_shape <- st_transform(la_shape, crs = 4326)  
 
 par(mfrow = c(1, 2), mar = c(4, 4, 2, 1))
+
+plot(la_shape$geometry,xlim = c(-119, -118), ylim = c(33.5, 34.5),
+     xlab = "Longitude",
+  ylab = "Latitude",
+  main = "Crime Density (2010-2019)",
+  cex.main=0.8)
 
 smoothScatter(
   x    = crime_la_2010_2019$LON,
@@ -73,8 +92,15 @@ smoothScatter(
   ylab = "Latitude",
   main = "Crime Density (2010–2019)",
   colramp = colorRampPalette(c("white", "skyblue", "blue", "darkblue")),
-  cex.main=0.8
+  cex.main=0.8,
+  add = TRUE
 )
+
+plot(la_shape$geometry,xlim = c(-119, -118), ylim = c(33.5, 34.5),
+     xlab = "Longitude",
+  ylab = "Latitude",
+  main = "Crime Density (2020–Present)",
+  cex.main=0.8)
 
 smoothScatter(
   x    = crime_la_2020_present$LON,
@@ -86,7 +112,8 @@ smoothScatter(
   ylab = "Latitude",
   main = "Crime Density (2020–Present)",
   colramp = colorRampPalette(c("white", "pink", "red", "darkred")),
-  cex.main=0.8
+  cex.main=0.8, 
+  add = TRUE
 )
 
 par(mfrow = c(1, 1))
