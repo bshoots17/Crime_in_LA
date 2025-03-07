@@ -18,19 +18,44 @@ During the COVID-19 pandemic in 2021, homicide rates in Los Angeles increased su
 
 Using National Incident-Based Reporting System (NIBRS) data, this report will examine the impact of the pandemic and various socioeconomic factors on homicide rates in LA. We aim to compare the effect of these local characteristics on the incidence of homicide in pre-, mid-, and post-pandemic conditions.
 
+## Data Description
+
+### Primary Data: Los Angeles Crime Data
+
 We will utilize NIBRS data from 2018-2024 to examine incident-level data, allowing us to fully capture the circumstances of each event. Our data is obtained from the Los Angeles Police Department (LAPD), who regularly updates Crime Data on the Data.gov website. The data includes all crime data, which we will subset to focus on homicide, and details such as date, location, and offense type.
 
 The codebook for this dataset can be found here: <https://data.lacity.org/Public-Safety/Crime-Data-from-2020-to-Present/2nrs-mtv8/about_data>.
 
-```{r, setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "..")
-```
+To group this data geographically, we will organize the crimes by their latitude and longitude into the appropriate Census Blocks and ZIP Code Tabulation Areas (ZCTAs). Additionally, we will examine the impact of latitude and longitude themselves, as humans do not always behave by administrative unit boundaries and latitude and longitude by themselves might suggest a different pattern.[@krieger2002] 
+
+### Secondary Data: Geographic and Socioeconomic Data
+
+The NIBRS data includes two main geographic identifiers: address and coordinates. Some addresses are poorly coded, such as just listing a street and no number, so we instead used latitude and longitude to examine geospatial relationships. We also used these coordinates to group our data into administrative units (Census Blocks and ZCTAs) to perform different levels of geospatial analysis. 
+
+We used shapefiles for the state of California, Los Angeles Police Department Divisions, and the Census units to categorize each crime event and to visualize the spatial distribution of the crimes through maps. To categorize the crime coordinate data, we performed a spatial join where we converted the crime coordinates to a spatial object and then joined them based on the geometries of the shape files.
+
+We additionally used publicly available socioeconomic data from the US Census Bureau, the City of Los Angeles Housing Department (LAHD), CalMatters, and Los Angeles County Public Health. We used median household income data from the American Community Survey 5-Year estimates to get an annual measure of income in LA ZCTAs. We used evictions data from both Calmatters and LAHD to gather longer-term data and more recent data, as LAHD only started tracking evictions data in 2023, while Calmatters has tracked LA County data since 2012. 
+
+Due to difficulties in obtaining city-level data, the unemployment rate, COVID cases, and number of evictions are for Los Angeles County, while the crime data is for the City of Los Angeles. The city comprises about a third of the county's population and the greater county area largely reflects the trends in the city itself.
+
+To maximize the amount of data available for analysis, we used LA County socioeconomic data from 2019-
+
+## Hypothesis
+
+Based on the 2022 Thurgood Marshall Institute report, we anticipate that the homicide rates have decreased since the end of the pandemic as society has returned to a more "normal" state. We aim to see how the rate of homicide compares to overall crime levels in the city and identify any patterns between socioeconomic factors such as eviction rates and the homicide count. 
+
+Our hypothesis is two-fold; first, we predict that since the pandemic, that socioeconomic conditions have improved in Los Angeles over the past few years. Second, we predict that as these socioeconomic measures have bounced back, the rate of homicide has returned to a more "normal" rate. 
+
+Additionally, we believe that we will observe a similar relationship between homicide and the overall crime rate; as the number of crimes decreases, so will the number of homicides.
+
+We will also investigate the relationship between homicide and enforcement factors. In particular, we will look at the LAPD budget in comparison to the homicide rate to determine if increased police funding is effective in reducing the number of homicides.
 
 ```{r DATA, output=FALSE, echo=FALSE}
 library(sf) # for map
 library(tidyverse) # using only for joining datasets to build map visual
 library(RColorBrewer) # for map color scheme
 library(tidygeocoder) # to get zip codes of addresses
+library(dplyr)
 
 # primary datasets
 # Primary datasets: Crime Data 2020-Present and 2010-2019
@@ -72,9 +97,9 @@ crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
 ## Examining Crime Density from 2010–2019 and 2020-Present
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-la_shape <- read_sf(dsn = "0_Data/Raw_Data/Cities_and_Communities", layer = "Cities_and_Communities")
+lapd_shape <- read_sf(dsn = "0_Data/Raw_Data/LAPD_Divisions", layer = "LAPD_Divisions")
 
-la_shape <- st_transform(la_shape, crs = 4326)  
+lapd_shape <- st_transform(lapd_shape, crs = 4326)  
 
 cali <- read_sf(dsn = "0_Data/Raw_Data/ca_counties", layer = "ca_counties")
 
@@ -90,12 +115,12 @@ smoothScatter(
   nbin = 300,
   xlab = "Longitude",
   ylab = "Latitude",
-  main = "Crime Density (2010–2019)",
+  main = "Crime Density by LAPD Division (2010–2019)",
   colramp = colorRampPalette(c("white", "skyblue", "blue", "darkblue")),
   cex.main=0.8
 )
 
-plot(la_shape$geometry, lwd=.5, add=TRUE)
+plot(lapd_shape$geometry, lwd=.5, add=TRUE)
 
 plot(cali$geometry, add = TRUE, lwd=.5)
 
@@ -107,12 +132,12 @@ smoothScatter(
   nbin = 300,
   xlab = "Longitude",
   ylab = "Latitude",
-  main = "Crime Density (2020–Present)",
+  main = "Crime Density by LAPD Division (2020–Present)",
   colramp = colorRampPalette(c("white", "pink", "red", "darkred")),
   cex.main=0.8
 )
 
-plot(la_shape$geometry, lwd=.5, add=TRUE)
+plot(lapd_shape$geometry, lwd=.5, add=TRUE)
 
 plot(cali$geometry, add = TRUE, lwd=.5)
 
@@ -231,7 +256,7 @@ LA_zctas$ZCTA5CE20 <- as.character(LA_zctas$ZCTA5CE20)
 zcta_filtered <- zcta %>% inner_join(LA_zctas, by = "ZCTA5CE20")
 
 # getting LA median income using joined file
-median_household_income <- cali_median_income %>% select(ZCTA, S1903_C03_001E, year)
+median_household_income <- cali_median_income %>% dplyr::select(ZCTA, S1903_C03_001E, year)
 
 zcta_with_data <- zcta_filtered %>% inner_join(median_household_income, join_by("ZCTA5CE20" == "ZCTA"))
 
@@ -421,7 +446,7 @@ crime_la_monthly$date <- ymd(paste0(crime_la_monthly$month_year, "-01"))
 crime_la_monthly$month <- month(crime_la_monthly$date)
 crime_la_monthly$year <- year(crime_la_monthly$date)
 
-correlations_df <- crime_la_monthly %>% inner_join(unemployment, join_by("year" == "Year", "month" == "month")) %>% select(month, year, Value, num_crimes) %>% rename("unemployment_rate" = "Value")
+correlations_df <- crime_la_monthly %>% inner_join(unemployment, join_by("year" == "Year", "month" == "month")) %>% dplyr::select(month, year, Value, num_crimes) %>% rename("unemployment_rate" = "Value")
 
 correlations_df2 <- correlations_df %>% inner_join(covid_la_monthly, by = c("month", "year"))
 
@@ -429,7 +454,7 @@ correlations_df3 <- correlations_df2 %>% inner_join(LA_county_evictions, join_by
 
 correlations_df4 <- correlations_df3 %>% inner_join(lapd_budget, by = "year")
 
-correlations <- correlations_df4 %>% select(year, month, unemployment_rate, num_crimes, cases, num_evictions, police_budget)
+correlations <- correlations_df4 %>% dplyr::select(year, month, unemployment_rate, num_crimes, cases, num_evictions, police_budget)
 
 Cor_mat <- round(cor(correlations), 2)
 
@@ -452,14 +477,12 @@ ggplot(data = long_Cor, aes(x = Var1, y = Var2, fill = value)) +
 
 ### Interpretation
 
-This heat map shows the correlations between different variables that could affect the number of crimes committed. Due to difficulties in obtaining city-level data, the unemployment rate, COVID cases, and number of evictions are for Los Angeles County, while the crime data is for the City of Los Angeles. The city comprises about a third of the county's population and the greater county area largely reflects the trends in the city itself.
-
-Here, we see that the most significant correlations for the number of crimes are the unemployment rate, year, and number of evictions. Years is positively correlated with number of crimes, meaning that as time passed, the number of crimes increased. Similarly, as the number of evictions increases, so does the number of crimes. Interestingly, as the unemployment rate increases, the number of crimes decreases, which is the opposite effect of what was expected (one would anticipate that higher unemployment would result in more crime). The LAPD budget interestingly had a medium-strength positive correlation with number of crimes, suggesting we should further examine the increase in the LAPD budget compared to the increase in crimes.
+This heat map shows the correlations between different variables that could affect the number of crimes committed. We see that the most significant correlations for the number of crimes are the unemployment rate, year, and number of evictions. Years is positively correlated with number of crimes, meaning that as time passed, the number of crimes increased. Similarly, as the number of evictions increases, so does the number of crimes. Interestingly, as the unemployment rate increases, the number of crimes decreases, which is the opposite effect of what was expected (one would anticipate that higher unemployment would result in more crime). The LAPD budget interestingly had a medium-strength positive correlation with number of crimes, suggesting we should further examine the increase in the LAPD budget compared to the increase in crimes.
 
 ## Homicide Victims by Age and Gender in Los Angeles 2010-Present
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-homicide_by_gender <- crime_la %>% filter(Crm.Cd.Desc == "CRIMINAL HOMICIDE") %>% select(Vict.Sex, DateParsed, Vict.Age) %>% mutate(gender = factor(Vict.Sex))
+homicide_by_gender <- crime_la %>% filter(Crm.Cd.Desc == "CRIMINAL HOMICIDE") %>% dplyr::select(Vict.Sex, DateParsed, Vict.Age) %>% mutate(gender = factor(Vict.Sex))
 
 levels(homicide_by_gender$gender) <- c("Female", "Male", "Other")
 ggplot(homicide_by_gender, aes(x = gender, y = Vict.Age, color = gender)) +
@@ -500,7 +523,7 @@ This density plot shows the frequency of crimes depending on the hour (in milita
 # Data Preparation
 homicides <- crime_la %>% inner_join(crimes_with_zips, by = c("DR_NO", "LAT", "LON","X", "year")) %>% filter(Crm.Cd.Desc == "CRIMINAL HOMICIDE") %>% 
   mutate(date = as.Date(DateParsed),
-         zip = as.character(ZCTA5CE20)) %>% select(-X)
+         zip = as.character(ZCTA5CE20)) %>% dplyr::select(-X)
 
 homicides <- homicides %>% inner_join(cali_median_income, join_by("zip" == "ZCTA", "year" == "year"))
 homicides$S1903_C03_001E <- as.numeric(homicides$S1903_C03_001E)
@@ -632,13 +655,13 @@ homicides_latlon_rounded <- homicides %>% mutate(LAT_rounded = round(LAT, 1),
                                                  LON_rounded = round(LON, 1))
 homicides_lat_long <- homicides_latlon_rounded %>% group_by(LAT_rounded, LON_rounded) %>% summarize(HomicideCount = n()) %>% ungroup()
 
-linear_model1 <- lm(HomicideCount ~ LAT_rounded + LON_rounded, data = homicides_by_year_lat_long)
+linear_model1 <- lm(HomicideCount ~ LAT_rounded + LON_rounded, data = homicides_lat_long)
 
 summary(linear_model1) # longitude rounded is significant, LAT_rounded is not
 ```
 
 ### By Year
-```{r, echo=FALSE, warning=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, eval=FALSE}
 homicides_lat_long <- homicides_latlon_rounded %>% group_by(LAT_rounded, LON_rounded) %>% summarize(HomicideCount = n()) %>% ungroup()
 
 
@@ -729,7 +752,7 @@ crime_la$YearWeek <- format(crime_la$DateParsed, "%Y-%U")
 
 crime_la$year <- as.integer(stringr::str_sub(crime_la$YearWeek, 1, 4))
 
-coords <- crime_la %>% select(LAT, LON, DR_NO, year)
+coords <- crime_la %>% dplyr::select(LAT, LON, DR_NO, year)
 
 zcta <- read_sf(dsn = "0_Data/Raw_Data/cb_2020_us_zcta520_500k", layer = "cb_2020_us_zcta520_500k")
 
@@ -764,7 +787,7 @@ rev_geo_duplicates <- reverse_geocode(duplicates2, lat = LAT, long = LON)
 # the above query identifies the address of these coordinates as KFC, 8644, Balboa Boulevard, Northridge South Neighborhood Council District, Los Angeles, Los Angeles County, California, 91325, United States. 
 # therefore, we will only keep the 91325 zip code rows.
 
-crime_zctas_no_duplicates <- crime_zctas %>% mutate(duplicate = ifelse(universal_idx %in% duplicate_data$universal_idx & ZCTA5CE20 != 91325, "Drop", "Keep")) %>% filter(duplicate != "Drop") %>% select(-duplicate)
+crime_zctas_no_duplicates <- crime_zctas %>% mutate(duplicate = ifelse(universal_idx %in% duplicate_data$universal_idx & ZCTA5CE20 != 91325, "Drop", "Keep")) %>% filter(duplicate != "Drop") %>% dplyr::select(-duplicate)
 
 # it's empty now 
 # duplicates <- table(crime_zctas_no_duplicates$universal_idx)[table(crime_zctas_no_duplicates$universal_idx) > 1]
@@ -779,7 +802,7 @@ no_zipcode_not0_zips <- reverse_geocode(no_zipcode_not0, lat = LAT, long = LON)
 
 no_zipcode_not0_zips$ZCTA5CE20 <- stringr::str_extract(no_zipcode_not0_zips$address, "\\d{5}")
 
-no_zipcode_not0_zips <- no_zipcode_not0_zips %>% select(-address)
+no_zipcode_not0_zips <- no_zipcode_not0_zips %>% dplyr::select(-address)
 
 crime_zctas2 <- crime_zctas_no_duplicates %>% filter(!is.na(ZCTA5CE20))
 
@@ -930,7 +953,7 @@ LA_zctas$ZCTA5CE20 <- as.character(LA_zctas$ZCTA5CE20)
 zcta_filtered <- zcta %>% inner_join(LA_zctas, by = "ZCTA5CE20")
 
 # getting LA median income using joined file
-median_household_income <- cali_median_income %>% select(ZCTA, S1903_C03_001E, year)
+median_household_income <- cali_median_income %>% dplyr::select(ZCTA5CE20, S1903_C03_001E, year)
 
 zcta_with_data <- zcta_filtered %>% inner_join(median_household_income, join_by("ZCTA5CE20" == "ZCTA"))
 
