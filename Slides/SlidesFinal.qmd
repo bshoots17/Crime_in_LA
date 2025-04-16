@@ -1,0 +1,845 @@
+---
+title: "Crime in Los Angeles: Homicide Increases in the COVID-19 Era"
+subtitle: "Bianca Schutz, Kevin Hu, Kaitlyn Kirt, Marco Stine"
+format:
+  revealjs:
+# embed-resources: true
+    slide-number: true
+    chalkboard:
+      buttons: false
+    preview-links: auto
+    css: styles.css
+    footer: Group 5 - STAT 405 - Bianca Schutz, Kevin Hu, Kaitlyn Kirt, Marco Stine - Crime in Los Angeles
+server: shiny
+---
+
+# Introduction {background="#6B6B6B"}
+
+## Why research crime in Los Angeles?
+
+::: incremental
+-   Homicide rates in Los Angeles increased substantially during pandemic
+-   One of the largest increases in the country, alongside Houston and Philadelphia
+-   Caused by pre-pandemic and pandemic-induced economic instability and inequalities
+-   Los Angeles makes their crime data publicly available (2010-Present)
+:::
+
+::: footer
+Learn more: [Thurgood Marshall Institute Report](https://www.naacpldf.org/the-truth-behind-crime-statistics/)
+:::
+
+## Our hypothesis
+
+We predicted that:
+
+::: incremental
+-   Socioeconomic conditions have improved in Los Angeles since the pandemic
+
+-   As these socioeconomic measures have bounced back, the rate of homicide has returned to a more "normal" rate
+
+-   A similar trend might be seen with overall crime rates in LA
+
+-   We also examined if increased police funding is correlated with a reduction in the number of homicides.
+:::
+
+## Primary Data
+
+Our primary datasets are the "Crime Data from 2010 to 2019" and "Crime Data from 2020 to Present" National Incident-Based Reporting System (NIBRS) datasets, available on [Data.gov](https://catalog.data.gov/).
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(RSQLite)
+library(dplyr)
+con <- dbConnect(RSQLite::SQLite(), normalizePath("la_stars.db"))
+
+crime_la_annually <- dbGetQuery(con, "SELECT * FROM crime_la_annually") %>% group_by(year) %>% summarize(obs = first(total_crimes))
+
+dbDisconnect(con)
+
+ggplot(crime_la_annually, aes(x = year, y = obs/1000)) +
+  geom_col(fill = "#19297C") +
+  ggthemes::theme_fivethirtyeight() +
+  labs(title = "Number of Annual Observations in Primary Dataset",
+       y = "Thousands of Observations (Crimes)",
+       x = "Year") +
+  theme(axis.title = element_text())
+```
+
+## Secondary
+
+Our supplementary datasets were:
+
+-   [Los Angeles County Eviction Data](https://calmatters.org/housing/homelessness/2023/11/california-evictions-post-pandemic/)
+
+-   [City of Los Angeles Eviction Data](https://housing.lacity.gov/residents/renters/eviction-notices-filed)
+
+-   [Los Angeles County COVID Data](http://dashboard.publichealth.lacounty.gov/covid19_surveillance_dashboard/)
+
+-   [Census Bureau Median Income Data](https://data.census.gov/table/ACSST1Y2023.S1903?q=income)
+
+-   [Los Angeles Police Department Budget Data](https://openbudget.lacity.org/#!/year/2023/operating/0/department_name/Police/0/program_name?vis=lineChart)
+
+-   [Los Angeles Area Unemployment Rate Data](https://www.bls.gov/regions/west/ca_losangeles_msa.htm#eag)
+
+# Data Exploration {background="#6B6B6B"}
+
+## Weekly Crime Counts in Los Angeles from 2010 to present
+
+```{r}
+#| fig.align: 'center'
+con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+
+query <- dbSendQuery(
+  con,
+  "
+  SELECT
+    YearWeek,
+    MIN(Date) AS start_of_week,
+    MAX(Date) AS end_of_week,
+    COUNT(*)  AS Crimes
+  FROM crime_la
+  GROUP BY YearWeek
+  ORDER BY YearWeek
+  "
+)
+weekly_counts <- dbFetch(query, n = -1)
+dbClearResult(query)
+dbDisconnect(con)
+
+weekly_counts$start_of_week <- as.Date(weekly_counts$start_of_week)
+weekly_counts$end_of_week   <- as.Date(weekly_counts$end_of_week)
+
+weekly_counts$days_in_week <-
+  as.numeric(difftime(weekly_counts$end_of_week,
+                      weekly_counts$start_of_week,
+                      units = "days")) + 1
+
+weekly_counts <- subset(weekly_counts, days_in_week == 7)
+
+weekly_counts$CrimesScaled <-
+  weekly_counts$Crimes * (7 / weekly_counts$days_in_week)
+
+weekly_counts$Index <- seq_len(nrow(weekly_counts))
+
+march_2020_index <- which(weekly_counts$YearWeek == "2020-09")  
+
+plot(
+  weekly_counts$Index,
+  weekly_counts$CrimesScaled,
+  type  = "l",
+  col   = "blue",
+  lwd   = 2,
+  xlab  = "Weekly Index",
+  ylab  = "Number of Crimes (Scaled to 7 Days)"
+)
+
+abline(
+  h   = pretty(weekly_counts$CrimesScaled),
+  v   = pretty(weekly_counts$Index),
+  col = "gray",
+  lty = "dotted"
+)
+
+abline(v = weekly_counts$Index[march_2020_index], col = "red", lwd = 2)
+
+text(
+  x     = weekly_counts$Index[march_2020_index] - 80,
+  y     = 10,
+  labels = "March 2020",
+  pos   = 3,
+  col   = "red"
+)
+
+```
+
+## Homicides Over Time by Income Quartile
+
+```{r, results='asis'}
+#| fig.align: 'center'
+library(plotly)
+con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+
+query <- dbSendQuery(con, "
+  SELECT i.S1903_C03_001E, x.year, i.ZCTA, x.LAT, x.LON
+  FROM (
+    SELECT c.LAT, c.LON, CAST(z.ZCTA5CE20 AS INTEGER) AS ZCTA5CE20, CAST(c.year AS INTEGER) AS year
+    FROM crime_la AS c
+    INNER JOIN crimes_with_zips AS z 
+      ON c.DR_NO = z.DR_NO 
+      AND c.LAT = z.LAT 
+      AND c.LON = z.LON 
+      AND c.X = z.X 
+      AND c.year = z.year
+    WHERE c.\"Crm.Cd.Desc\" = 'CRIMINAL HOMICIDE'
+  ) AS x INNER JOIN (SELECT m.S1903_C03_001E, CAST(m.year AS INTEGER) AS year, CAST(m.ZCTA AS INTEGER) AS ZCTA FROM cali_median_income m) AS i 
+    ON x.ZCTA5CE20 = i.ZCTA AND x.year = i.year
+")
+
+homicides <- dbFetch(query,n=-1)
+dbClearResult(query)
+dbDisconnect(con)
+
+# Form income quartiles
+homicides <- homicides %>% mutate(income_quartile = ntile(S1903_C03_001E, 4)) 
+homicide_trends <- homicides %>% group_by(year, income_quartile) %>% summarize(homicide_count = n(), 
+          ref = mean(S1903_C03_001E),
+          .groups = "drop")
+
+homicide_trends$income_quartile <- as.factor(homicide_trends$income_quartile)
+# removing NAs
+homicide_trends <- homicide_trends %>% filter(!is.na(homicide_count) & !is.na(income_quartile))
+
+# creating labels
+levels(homicide_trends$income_quartile) <- c("Low Income", "Lower-Middle Income", "Higher-Middle Income", "High Income")
+
+homicide_trends <- homicide_trends %>%
+  mutate(income_quartile = as.factor(income_quartile)) %>%
+  rename("Year" = "year",
+         "Homicide Count" = "homicide_count",
+         "Income Quartile" = "income_quartile"
+         )
+# Plot homicide trends over time by income quartile
+p <- ggplot(homicide_trends, aes(x = Year, y = `Homicide Count`)) +
+  geom_area(aes(fill = `Income Quartile`), alpha = 0.6, position = "identity") +
+  labs(
+    x = "Year",
+    y = "Number of Homicides",
+    fill = "Income Quartile"
+  ) +
+  theme_minimal() +
+  scale_fill_viridis_d(option = "plasma", direction = -1)
+
+ggplotly(p)
+```
+
+## Homicides and Median Income By Zip Code
+
+```{r, echo=FALSE}
+#| fig.align: 'center'
+library(RSQLite)
+con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+
+query <- dbSendQuery(con, "SELECT i.*, c.*
+FROM cali_median_income i
+INNER JOIN crimes_with_zips c
+ON i.year = c.year AND CAST(i.ZCTA AS int) = c.ZCTA5CE20")
+crime_income <- dbFetch(query,n=-1)
+dbClearResult(query)
+
+query <- dbSendQuery(con, "SELECT `Crm.Cd.Desc`, year, DR_NO FROM crime_la")
+crime_la <- dbFetch(query,n=-1)
+dbClearResult(query)
+
+dbDisconnect(con)
+
+crime_type <- crime_la %>% dplyr::select(year, Crm.Cd.Desc, DR_NO)
+
+crime_income_type <- crime_income[,-c(249, 247)] %>% inner_join(crime_type, join_by("year" == "year", "DR_NO" == "DR_NO"))
+
+homicide_income_by_year <- crime_income_type %>% 
+  filter(Crm.Cd.Desc == "CRIMINAL HOMICIDE") %>%
+  group_by(year, ZCTA5CE20) %>%
+  summarize(HomicideCount = n(),
+            cali_median_income = median(as.numeric(S1903_C03_001E))) %>%
+  ungroup()
+
+homicide_income_by_year <- homicide_income_by_year %>% filter(!is.na(HomicideCount) & !is.na(cali_median_income))
+
+homicide_income_by_year$label <- ifelse(
+  homicide_income_by_year$cali_median_income > quantile(homicide_income_by_year$cali_median_income, 0.99) | 
+  homicide_income_by_year$HomicideCount > quantile(homicide_income_by_year$HomicideCount, 0.99), 
+  homicide_income_by_year$ZCTA5CE20, 
+  "")
+
+ggplot(data = homicide_income_by_year, aes(x = cali_median_income, 
+                                        y = HomicideCount)) +
+  geom_point() +
+  ggrepel::geom_text_repel(aes(label = label), size = 2.5, nudge_x = 2, nudge_y = 1) + 
+  labs(x = "Median Annual Income ($)",
+       y = "Annual Homicide Count",
+       color = "Year") +
+  ggthemes::theme_fivethirtyeight() + 
+  theme(axis.title = element_text())
+```
+
+## Geographical Trends in Crime Rates By LAPD Bureau
+```{r}
+#| fig.align: 'center'
+con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+
+query <- dbSendQuery(con, "SELECT `AREA.NAME`, year, COUNT(*) AS numberOfCrimes FROM crime_la GROUP BY `AREA.NAME`, year")
+crime_by_area <- dbFetch(query,n=-1)
+dbClearResult(query)
+
+query <- dbSendQuery(con, "SELECT * FROM lapd_bureaus")
+bureaus <- dbFetch(query,n=-1)
+dbClearResult(query)
+dbDisconnect(con)
+
+bureaus$Division <- gsub("77th", "77th Street", bureaus$Division)
+bureaus$Division <- gsub("North", "N", bureaus$Division)
+bureaus$Division <- gsub("Neast", "Northeast", bureaus$Division)
+
+crime_by_area <- crime_by_area %>% left_join(bureaus, join_by("AREA.NAME" == "Division"))
+
+ggplot(crime_by_area, aes(y = numberOfCrimes, group = Bureau, x = Bureau)) + 
+        geom_boxplot(aes(fill = Bureau)) +
+  labs(y = "Annual Number of Crimes")
+```
+
+## Evictions and Crime Levels
+
+```{r}
+#| fig.align: 'center'
+con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+
+query <- dbSendQuery(con, "SELECT * FROM evictions_city_la")
+evictions_la <- dbFetch(query,n=-1)
+dbClearResult(query)
+
+query <- dbSendQuery(con, "SELECT `Crm.Cd.Desc`, year, month, DR_NO FROM crime_la")
+crime_la <- dbFetch(query,n=-1)
+dbClearResult(query)
+
+dbDisconnect(con)
+# fix mistake
+evictions_la$Date.Received <- gsub("2205", "2025", evictions_la$Date.Received)
+
+# convert to date
+evictions_la$month_year <- format(as.Date(evictions_la$Date.Received, format="%m-%d-%Y"), "%Y-%m")
+
+# get unique months
+unique_months <- data.frame(month_year = sort(unique(evictions_la$month_year)), index = 1:length(unique(evictions_la$month_year)))
+
+evictions_la_indexed <- evictions_la %>% left_join(unique_months, by = "month_year")
+
+# create color scheme
+crime_la$month_year <- paste0(crime_la$year, "-", sprintf("%02d", crime_la$month))
+
+crime_la_monthly <- crime_la %>% 
+  group_by(month_year) %>% 
+  summarize(num_crimes = n())
+
+evictions_la_indexed_crimes <- evictions_la_indexed %>% left_join(crime_la_monthly, by = "month_year")
+
+avg_crimes <- mean(evictions_la_indexed_crimes$num_crimes)
+
+evictions_la_indexed_crimes$high_low_crime <- as.factor(ifelse(evictions_la_indexed_crimes$num_crimes > avg_crimes, "Above Average", "Below Average"))
+
+
+ggplot(data = evictions_la_indexed_crimes, aes(x = index)) + 
+  geom_histogram(aes(fill = high_low_crime), color = "white", bins = nrow(unique_months)) +
+  scale_x_continuous(breaks=unique_months$index,
+        labels=unique_months$month_year) + 
+  labs(x = "Month and Year of Eviction Notice Receipt", y = "Number of Evictions", fill = "Crime Level") +
+  ggthemes::scale_fill_fivethirtyeight() + 
+  ggthemes::theme_fivethirtyeight() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+        axis.title.y = element_text(),
+        axis.title.x = element_text(vjust = -.75),
+        plot.title = element_text(size=12))
+```
+
+## Geographical Distribution of Homicides
+:::::: columns
+:::: {.column width="35%"}
+::: {style="font-size: 50%"}
+```{r}
+sliderInput("selected_year", "Select Year:",
+                  min = 2010, max = 2024,
+                  value = 2010, sep = "", step= 1)
+```
+:::
+::::
+
+::: {.column width="65%"}
+```{r}
+library(leaflet)
+leafletOutput("crime_map", height = 600)
+```
+:::
+::::::
+
+```{r}
+#| context: server
+library(leaflet)
+library(RSQLite)
+library(shiny)
+library(leaflet)
+library(DBI)
+library(RSQLite)
+library(dplyr)
+
+crime_data <- reactive({
+    req(input$selected_year)
+    con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+    crime_la_coords <- dbGetQuery(con, paste("SELECT LAT, LON, year FROM crime_la WHERE `Crm.Cd.Desc` = 'CRIMINAL HOMICIDE' AND year = ", input$selected_year))
+    dbDisconnect(con)
+    return(crime_la_coords)
+  })
+
+output$crime_map <- renderLeaflet({ 
+  filtered <- crime_data()
+  leaflet() %>%
+  addTiles(
+    urlTemplate = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+  ) %>%
+  setView(lat = 34.003, lng = -118.3, zoom = 10) %>% 
+  addCircleMarkers(data=filtered, lng=~LON, lat=~LAT)
+  })
+```
+
+# Correlations and Modeling {background="#6B6B6B"}
+
+## Correlation Heat Map
+```{r}
+#| fig.align: 'center'
+library(lubridate)
+# creating dataset for correlations
+con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+# since we do not have pre- and post- pandemic city of LA data, we are instead using LA county data for evictions.
+# covid data
+query <- dbSendQuery(con, "
+  SELECT 
+    CAST(strftime('%Y', ep_date) AS INTEGER) AS year,
+    CAST(strftime('%m', ep_date) AS INTEGER) AS month,
+   CAST(strftime('%d', ep_date) AS INTEGER) AS date, 
+   cases_14day
+  FROM covid_cases
+")
+covid_14day <- dbFetch(query,n=-1)
+dbClearResult(query)
+# since there is a 7 day lag in reporting, let's do monthly = cases on the 21st and on the 5th of the next month.
+covid_14day$lagged <- covid_14day$date + 7
+
+covid_la_lagged <- covid_14day %>% filter(lagged %in% c(21, 35)) %>% arrange(month, year)
+
+covid_la_monthly <- covid_la_lagged %>% group_by(month, year) %>% summarize(cases = sum(cases_14day)) %>% ungroup() %>% arrange(year, month)
+
+covid_la_monthly$index <- 1:nrow(covid_la_monthly)
+
+# next, unemployment rate, lapd budget, and evictions
+query <- dbSendQuery(con, "
+  SELECT 
+    u.month, 
+    u.Year, 
+    u.Value AS unemployment_rate, 
+    l.police_budget, 
+    e.Count AS num_evictions
+  FROM 
+    unemployment_la AS u
+  INNER JOIN 
+    lapd_budget AS l ON u.Year = l.year
+  INNER JOIN 
+    evictions_county_la AS e ON u.Year = e.Year AND u.month = e.Month
+")
+unemployment_lapd_budget_evictions <- dbFetch(query,n=-1)
+dbClearResult(query)
+
+dbDisconnect(con)
+
+crime_la_monthly$date <- ymd(paste0(crime_la_monthly$month_year, "-01"))
+crime_la_monthly$month <- month(crime_la_monthly$date)
+crime_la_monthly$year <- year(crime_la_monthly$date)
+
+correlations_df <- crime_la_monthly %>% inner_join(unemployment_lapd_budget_evictions, join_by("year" == "Year", "month" == "month")) %>% dplyr::select(month, year, num_evictions, unemployment_rate, num_crimes, police_budget)
+
+correlations_df2 <- correlations_df %>% inner_join(covid_la_monthly, by = c("month", "year"))
+
+correlations <- correlations_df2 %>% dplyr::select(year, month, unemployment_rate, num_crimes, cases, num_evictions, police_budget)
+
+Cor_mat <- round(cor(correlations), 2)
+
+# get only the upper triangle of variables 
+# (because a correlation heat map shows each correlation value twice)
+get_upper_tri <- function(cormat){
+  # lower.tri -> Returns a matrix of logicals, so set the values that are true to NA
+  cormat[lower.tri(cormat)]<- NA # set the correlation matrix lower triangle to NA
+  return(cormat) 
+}
+
+# reorder them by the strength of the correlation
+reorder_cormat <- function(cormat){
+  # Use correlation between variables as distance
+  dd <- as.dist((1-cormat)/2)
+  hc <- hclust(dd) # use hierarchical clustering to reorder
+  cormat <-cormat[hc$order, hc$order]
+}
+
+# use the functions above to remove the unnecessary parts
+Cor_mat<-reorder_cormat(Cor_mat)
+
+Cor_mat_upper<-get_upper_tri(Cor_mat)
+
+# using melt instead of pivot_longer because pivot_longer did not order correctly
+Cor_mat_upper<-reshape2::melt(Cor_mat_upper, na.rm=TRUE)
+
+# remove the central values 
+# which show the correlation for each variable with itself
+Cor_mat_upper<- Cor_mat_upper %>% filter(value != 1.00)
+
+
+long_Cor <- Cor_mat_upper %>%
+    mutate(Var1 = recode(Var1, year = 'Year', month = 'Month', unemployment_rate =  'Unemployment Rate', num_crimes = "Number of Crimes", cases = "COVID Cases", num_evictions = "Number of Evictions", police_budget = "LAPD Budget ($ billions)"),
+           Var2 = recode(Var2, year = 'Year', month = 'Month', unemployment_rate =  'Unemployment Rate', num_crimes = "Number of Crimes", cases = "COVID Cases", num_evictions = "Number of Evictions", police_budget = "LAPD Budget \n ($ billions)"))
+
+ggplot(data = long_Cor, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(direction = -1,limit = c(-1, 1)) +
+  theme(axis.title.x =  element_blank(),
+        axis.title.y = element_blank()) +
+  geom_text(aes(label = value), color = "black", size = 4) + 
+   theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size=12)) +
+  labs(fill = "Correlation")
+```
+
+## Relationship Between Homicides and Socioeconomic Variables
+```{r}
+#| context: setup
+#| include: false
+library(RSQLite)
+library(ggplot2)
+library(dplyr)
+
+corr <- read.csv("corr.csv")
+
+colnames(corr) <- c("X", "Year", "Month", "Unemployment", "Crimes", "COVID", "Evictions", "LAPD Budget")
+```
+
+```{r}
+#| panel: sidebar
+radioButtons("opts", "View homicides compared to:", 
+            choices = c("COVID", "Evictions", "LAPD Budget", "Unemployment"))
+```
+
+```{r}
+#| panel: fill
+plotOutput("scatter")
+```
+
+```{r}
+#| context: server
+output$scatter <- renderPlot({
+  # Guessing 'value' is the comparison variable — adjust as needed
+  df <- corr[c("Crimes", input$opts, 'Year')]
+  colnames(df) <- c("Crimes", "var", "Year")
+
+  ggplot(df, aes(x = var, y = Crimes)) +
+    geom_point(aes(colour = as.factor(Year))) +
+    scale_color_viridis_d() +
+  ggthemes::theme_fivethirtyeight() +
+  theme(axis.title = element_text()) + 
+    labs(x = input$opts, y = "Crime Count", title = paste("Monthly Crime vs", input$opts),
+         colour = "Year") +
+    geom_smooth(method = "lm")
+}) 
+```
+
+## Modeling Crime Rates Spatially
+
+\begin{align}
+\text{HomicideCount}_i = \beta_0 + 
+\beta_1 \text{Latitude}_i +
+\beta_2 \text{Longitude}_i + \epsilon_i
+\end{align}
+
+Homicide rates are higher in the southeastern parts of Los Angeles. 
+
+```{r, warning=FALSE, message=FALSE, fig.align = "center"}
+con <- dbConnect(RSQLite::SQLite(), normalizePath("crime_in_la.db"))
+
+query <- dbSendQuery(con, "
+  SELECT i.S1903_C03_001E, x.year, i.ZCTA, x.LAT, x.LON
+  FROM (
+    SELECT c.LAT, c.LON, CAST(z.ZCTA5CE20 AS INTEGER) AS ZCTA5CE20, CAST(c.year AS INTEGER) AS year
+    FROM crime_la AS c
+    INNER JOIN crimes_with_zips AS z 
+      ON c.DR_NO = z.DR_NO 
+      AND c.LAT = z.LAT 
+      AND c.LON = z.LON 
+      AND c.X = z.X 
+      AND c.year = z.year
+    WHERE c.\"Crm.Cd.Desc\" = 'CRIMINAL HOMICIDE'
+  ) AS x INNER JOIN (SELECT m.S1903_C03_001E, CAST(m.year AS INTEGER) AS year, CAST(m.ZCTA AS INTEGER) AS ZCTA FROM cali_median_income m) AS i 
+    ON x.ZCTA5CE20 = i.ZCTA AND x.year = i.year
+")
+
+homicides <- dbFetch(query,n=-1)
+dbClearResult(query)
+dbDisconnect(con)
+
+
+homicides_latlon_rounded <- homicides %>%
+  mutate(LAT_rounded = round(LAT, 2),
+         LON_rounded = round(LON, 2))
+
+homicides_lat_long_yr <- homicides_latlon_rounded %>% 
+  group_by(year, LAT_rounded, LON_rounded) %>%
+  summarize(HomicideCount = n()) %>% ungroup()
+
+linear_model1 <- lm(HomicideCount ~ LAT_rounded + LON_rounded, data = homicides_lat_long_yr)
+
+d <- coef(summary(linear_model1))[,c(1, 4)]
+colnames(d) <- c("Coefficient", "p-value")
+rownames(d) <- c("(Intercept", "Latitude", "Longitude")
+knitr::kable(d)
+```
+
+## Homicides Increased In Pandemic Years
+
+
+\small
+\begin{equation}
+\text{HomicideCount}_i = \beta_0 + \beta_1 \text{year}_i + \epsilon_i
+\end{equation}
+
+```{r}
+#| fig.align: 'center'
+#| fig.width: 6
+#| fig.height: 4
+avg <- homicides_lat_long_yr %>% group_by(year) %>% summarize(avgHC = mean(HomicideCount)) %>% ungroup()
+ggplot(avg, aes(x = year, y = avgHC)) +
+  geom_line(color = "#7e03a8") +
+  ggthemes::theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        plot.caption = element_text(size = 8)) +
+  labs(y = "Average Homicide Count",
+       x = "Year",
+       title = "Average Homicide Count By Year",
+       caption = "Average was derived from latitude and longitude groups used in the model.")
+```
+
+# Killer Plot {background="#6B6B6B"}
+
+## Walk of Crime
+
+```{r}
+#| context: setup
+#| include: false
+# load functions
+source("dependencies.R")
+library(dplyr)
+spatial <- read.csv("homicides.csv")
+# load data
+con <- dbConnect(RSQLite::SQLite(), normalizePath("la_stars.db"))
+
+crime_la_annually <- dbGetQuery(con, "SELECT * FROM crime_la_annually")
+covid_la_annually <- dbGetQuery(con, "SELECT * FROM covid_la_annually")
+evictions_county_la <- dbGetQuery(con, "SELECT * FROM evictions_county_la")
+lapd_budget_annually <- dbGetQuery(con, "SELECT * FROM lapd_budget_annually")
+unemployment_la <- dbGetQuery(con, "SELECT * FROM unemployment_la")
+correlations_summary <- dbGetQuery(con, "SELECT * FROM correlations_quarterly")
+correlations_summary$period <- 1:nrow(correlations_summary)
+
+map_datasets <- list("Crime Count" = crime_la_annually,
+                     "Covid Cases" = covid_la_annually,
+                     "Evictions" = evictions_county_la,
+                     "LAPD Budget" = lapd_budget_annually,
+                     "Unemployment Rate" = unemployment_la)
+
+dbDisconnect(con)
+```
+
+```{r}
+#| panel: sidebar
+
+radioButtons("type", "View:", choices = c("Homicides Spatially", "A Variable Over Time"), selected = "Homicides Spatially")
+# Dropdown to select dataset
+uiOutput("dataset")
+
+uiOutput("year_selector")
+
+uiOutput("crime_type_ui")
+```
+
+```{r}
+#| panel: fill
+
+plotOutput("stars")
+```
+
+```{r}
+#| context: server
+
+selectedKillerData <- reactive({
+  req(input$dataset, input$year_range)
+
+  if (input$dataset == 'Crime Count') {
+    req(input$crime_type)
+    df <- map_datasets[[input$dataset]] %>%
+      filter(year %in% seq(input$year_range[1], input$year_range[2]),
+             Crm.Cd.Desc == input$crime_type)
+  } else {
+    df <- map_datasets[[input$dataset]] %>%
+      filter(year %in% seq(input$year_range[1], input$year_range[2]))
+  }
+  return(df)
+})
+
+output$dataset <- renderUI({
+  req(input$type)
+  
+  if (input$type == "A Variable Over Time") {
+  selectInput("dataset", "Choose Dataset", 
+            choices = c("Crime Count", 
+                        "Covid Cases", 
+                        "Evictions", 
+                        "LAPD Budget", 
+                        "Unemployment Rate")) 
+}
+})
+
+output$year_selector <- renderUI({
+  req(input$type)
+
+  if (input$type == "Homicides Spatially") {
+    # Show this when Homicides Spatially is selected
+    selectInput("year_single", "Select Year:", choices = 2019:2023, selected = 2023)
+  } else {
+    req(input$dataset)  # Now only required when viewing variables over time
+
+    # Get relevant years
+    year_vals <- switch(input$dataset,
+                        "Crime Count" = crime_la_annually$year,
+                        "Covid Cases" = covid_la_annually$year,
+                        "Evictions" = evictions_county_la$year,
+                        "LAPD Budget" = lapd_budget_annually$year,
+                        "Unemployment Rate" = unemployment_la$year)
+
+    year_vals <- sort(unique(year_vals))
+
+    sliderInput("year_range", "Select Time Range:",
+                min = min(year_vals), max = max(year_vals),
+                value = c(min(year_vals), max(year_vals)), step = 1,
+                sep = "")
+  }
+})
+
+output$crime_type_ui <- renderUI({
+  req(input$type)
+  req(input$dataset)
+
+  if (input$type == "A Variable Over Time" && input$dataset == "Crime Count") {
+    selectInput("crime_type", "Select Crime Type",
+                choices = unique(crime_la_annually$Crm.Cd.Desc),
+                selected = unique(crime_la_annually$Crm.Cd.Desc)[1])
+  }
+})
+
+output$stars <- renderPlot({
+  req(input$type)
+  
+  if (input$type == "Homicides Spatially") {
+    req(input$year_single)
+    print(as.integer(input$year_single))
+    print(unique(spatial$year))
+    df <- spatial %>% filter(year == as.integer(input$year_single))
+    df$LAT <- round(df$LAT_rounded, 1)
+    df$LON <- round(df$LON_rounded, 1)
+    
+    df <- df %>% group_by(LAT, LON) %>% summarize(avgHomicides = mean(HomicideCount)) %>% ungroup()
+    
+    df$LATstd <- .175 + ((df$LAT - min(df$LAT))/(max(df$LAT) - min(df$LAT))) * .75
+    df$LONstd <- .175 + ((df$LON - min(df$LON))/(max(df$LON) - min(df$LON))) * .75
+   labels <- levels(standardize_scale(df$avgHomicides))
+   df$scale <- as.numeric(standardize_scale(df$avgHomicides))
+   
+   grid.newpage()
+   grid.rect(gp = gpar(fill = "gray15", col = NA))  # No border, black fill
+   for (star in 1:nrow(df)) {
+        row <- as.list(df[star,])
+        grid.draw(create_star(scale_factor = row$scale, center = c(row$LONstd, row$LATstd))) 
+        grid.text(label = paste0(row$LAT, ", ", row$LON),
+    x = unit(row$LONstd, "npc"),
+    y = unit(row$LATstd + 0.05, "npc"),  # offset below star; adjust as needed
+    gp = gpar(col = "white", fontsize = 10))
+        }
+   grid.rect(x = 0.5, y = 0, width = 1, height = 0.125, just = "bottom", gp = gpar(col = "white", fill = "gray15"))
+        
+        grid.text(label = "Average Homicides",
+    x = unit(.125, "npc"),
+    y = unit(0.0625, "npc"),  # offset below star; adjust as needed
+    gp = gpar(col = "white", fontsize = 14))
+      
+      grid.draw(create_star(scale_factor = 1, center = c(.25, .0625)))
+      
+      grid.draw(create_star(scale_factor = 2, center = c(.375, .0625)))
+      
+      grid.draw(create_star(scale_factor = 3, center = c(.6, .0625)))
+      
+      grid.draw(create_star(scale_factor = 4, center = c(.85, .0625)))
+      
+      grid.text(label = as.character(labels[1]), x = unit(.275, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11))
+      grid.text(label = as.character(labels[2]), x = unit(.475, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11))
+      grid.text(label = as.character(labels[3]), x = unit(.725, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11))
+      grid.text(label = as.character(labels[4]), x = unit(.925, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11)) 
+} else {
+      df <- selectedKillerData()
+      print(head(df))
+      rows <- nrow(df)
+      print(rows)
+      col_row <- if (rows <= 13) {
+        c(rows, 1)
+      } else if (rows == 14) {
+        c(7, 2)
+      } else if (rows == 15) {
+        c(5, 3)
+      } else if (rows == 16) {
+        c(4, 4)
+      } else {
+        c(ceiling(sqrt(rows)), ceiling(rows / ceiling(sqrt(rows))))
+      }
+      
+      stars <- generate_star_centers(col_row[1], col_row[2])
+      print(nrow(stars))
+      labels <- levels(standardize_scale(df$variable))
+      print(labels)
+      df_sorted <- df[order(df$year), ]
+
+      stars$scale <- df_sorted$bins
+      stars$year <- df_sorted$year
+      print(stars)
+      
+      grid.newpage()
+      grid.rect(gp = gpar(fill = "gray15", col = NA))  # No border, black fill
+      
+      for (star in 1:nrow(stars)) {
+        row <- as.list(stars[star,])
+        grid.draw(create_star(scale_factor = row$scale, center = c(row$x, row$y)))
+        
+        grid.text(label = as.character(row$year),
+    x = unit(row$x, "npc"),
+    y = unit(row$y - 0.05, "npc"),  # offset below star; adjust as needed
+    gp = gpar(col = "white", fontsize = 10))
+      }
+        grid.rect(x = 0.5, y = 0, width = 1, height = 0.125, just = "bottom", gp = gpar(col = "white", fill = "gray15"))
+        
+        grid.text(label = paste(stringr::str_to_title(input$dataset), "Level"),
+    x = unit(.1, "npc"),
+    y = unit(0.0625, "npc"),  # offset below star; adjust as needed
+    gp = gpar(col = "white", fontsize = 14))
+      
+      grid.draw(create_star(scale_factor = 1, center = c(.225, .0625)))
+      
+      grid.draw(create_star(scale_factor = 2, center = c(.375, .0625)))
+      
+      grid.draw(create_star(scale_factor = 3, center = c(.6, .0625)))
+      
+      grid.draw(create_star(scale_factor = 4, center = c(.85, .0625)))
+      
+      grid.text(label = as.character(labels[2]), x = unit(.275, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11))
+      grid.text(label = as.character(labels[3]), x = unit(.475, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11))
+      grid.text(label = as.character(labels[4]), x = unit(.725, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11))
+      grid.text(label = as.character(labels[5]), x = unit(.925, "npc"),
+                y = unit(0.0625, "npc"), gp = gpar(col = "white", fontsize = 11)) }
+    })
+```
